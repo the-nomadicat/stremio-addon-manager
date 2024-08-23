@@ -32,7 +32,9 @@
           <li>
             Open the developer console <a href="#faq">(?)</a> and paste the
             follow code snippet:
-            <code>JSON.parse(localStorage.getItem("profile")).auth.key</code>
+            <div class="code-container">
+              <code>JSON.parse(localStorage.getItem("profile")).auth.key</code>
+            </div>
           </li>
           <li>Take the output value and paste it into the form below.</li>
         </ul>
@@ -46,3 +48,27 @@
     </ol>
   </section>
 </template>
+
+<style scoped>
+.code-container {
+    overflow-x: auto;
+    padding: 10px;
+    border-radius: 4px;
+}
+
+code {
+    white-space: nowrap;
+    font-family: monospace;
+    font-size: 0.9em;
+    color: #b93334;
+}
+
+@media (max-width: 600px) {
+    .code-container {
+        padding: 5px;
+    }
+    code {
+        font-size: 0.8em;
+    }
+}
+</style>
