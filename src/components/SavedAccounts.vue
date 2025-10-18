@@ -33,7 +33,7 @@ function makeId(serverUrl, email) {
 }
 
 // ---- public API (parent will call save(...) after successful login) ----
-function save({ serverUrl, email, password, label }) {
+function save({ serverUrl, email, password, authKey, label }) {
   const id = makeId(serverUrl, email)
   const now = Date.now()
   const next = {
@@ -42,6 +42,7 @@ function save({ serverUrl, email, password, label }) {
     serverUrl: (serverUrl || '').trim(),
     email: (email || '').trim(),
     password: password || '',   // ✅ store password
+    authKey: (authKey || '').trim(),
     lastUsedAt: now,
   }
   const idx = accounts.value.findIndex(a => a.id === id)

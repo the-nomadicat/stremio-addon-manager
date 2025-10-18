@@ -17,7 +17,9 @@ function onSavedSelected(a) {
   if (a) {
     email.value = a.email
     password.value = a.password || ''
+    authKey.value = a.authKey || ''
     emits('user-email', email.value)
+    emitAuthKey()
   }
 }
 
@@ -40,6 +42,7 @@ async function loginUserPassword() {
           serverUrl: props.stremioAPIBase,
           email: email.value,
           password: password.value,
+          authKey: authKey.value,
           label: email.value,
         })
 

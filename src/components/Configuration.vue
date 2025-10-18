@@ -37,7 +37,7 @@ function backupConfig() {
 
   const who = safeForFilename(currentEmail.value || 'no-email')
   const ts = new Date().toISOString().replace(/[:.]/g, '-')
-  const filename = `${who}-stremio-addons-${ts}.json`
+  const filename = `stremio-addons-${who}-${ts}.json`
 
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -210,9 +210,28 @@ function saveManifestEdit(updatedManifest) {
 
             <fieldset id="form_step1">
                 <legend>Step 1: Load Addons</legend>
-                <button class="button primary" @click="loadUserAddons">
-                    {{ loadAddonsButtonText }}
-                </button>
+                <div class="step1-actions">
+                    <button class="button primary" @click="loadUserAddons">
+                        {{ loadAddonsButtonText }}
+                    </button>
+                    <div class="backup-actions" v-if="addons.length">
+                        <button type="button" class="button" @click="backupConfig" title="Export config to file">
+                            <i class="uil uil-export" style="margin-right:.35rem;"></i> Backup
+                        </button>
+
+                        <button type="button" class="button" @click="triggerRestore" title="Import config from file">
+                            <i class="uil uil-import" style="margin-right:.35rem;"></i> Restore…
+                        </button>
+
+                        <input
+                            ref="restoreInput"
+                            type="file"
+                            accept="application/json"
+                            style="display:none"
+                            @change="restoreFromFile"
+                        />
+                    </div>
+                </div>
             </fieldset>
 
             <fieldset id="form_step2">
@@ -237,27 +256,6 @@ function saveManifestEdit(updatedManifest) {
                     <img src="https://icongr.am/feather/loader.svg?size=16&amp;color=ffffff" alt="icon">
                 </button>
             </fieldset>
-
-            <fieldset id="form_step4">
-                <legend>Step 4: Backup & Restore</legend>
-                <div style="display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
-                    <button type="button" class="button" @click="backupConfig" title="Export config to file">
-                        <i class="uil uil-export" style="margin-right:.35rem;"></i> Backup
-                    </button>
-
-                    <button type="button" class="button" @click="triggerRestore" title="Import config from file">
-                        <i class="uil uil-import" style="margin-right:.35rem;"></i> Restore…
-                    </button>
-
-                    <input
-                        ref="restoreInput"
-                        type="file"
-                        accept="application/json"
-                        style="display:none"
-                        @change="restoreFromFile"
-                    />
-                </div>
-            </fieldset>
         </form>
     </section>
 
@@ -278,6 +276,20 @@ function saveManifestEdit(updatedManifest) {
 }
 .item.dragging { opacity: 0.6; }
 .item.dragging :where(.details, i) { opacity: 0; }
+
+.step1-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.backup-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
 
 .modal {
     position: fixed;
