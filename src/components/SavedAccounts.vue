@@ -57,6 +57,11 @@ function removeSelected() {
   if (!selectedId.value) return
   const idx = accounts.value.findIndex(a => a.id === selectedId.value)
   if (idx >= 0) {
+    const target = accounts.value[idx]
+    const label = target?.label || target?.email || 'this account'
+    const confirmed = window.confirm(`Delete saved login for:\n\n${label}?`)
+    if (!confirmed) return
+
     accounts.value.splice(idx, 1)
     selectedId.value = accounts.value[0]?.id ?? null
     persist()
