@@ -43,20 +43,35 @@
     
             <div v-if="formModel.catalogs && formModel.catalogs.length > 0" class="form-group">
                 <label>Catalogs</label>
-                <div v-for="(catalog, index) in formModel.catalogs" :key="catalog.type" class="catalog-item">
-                    <label :for="'catalog-' + catalog.type" class="catalog-type-label">
-                        {{ catalog.type }}
-                    </label>
-                    <input
-                        :id="'catalog-' + catalog.type"
-                        type="text"
-                        v-model="catalog.name"
-                        placeholder="Catalog Name"
-                    />
-                    <button type="button" class="delete-button" @click="removeCatalog(index)">
-                        <img src="https://icongr.am/feather/trash-2.svg?size=16" alt="Delete Catalog" />
-                    </button>
-                </div>
+                <Draggable
+                    v-model="formModel.catalogs"
+                    item-key="__dragKey"
+                    class="catalog-list"
+                    ghost-class="catalog-ghost"
+                    handle=".drag-handle"
+                    @end="onCatalogReorder"
+                    tag="div"
+                >
+                    <template #item="{ element, index }">
+                        <div class="catalog-item" :key="element.__dragKey">
+                            <span class="drag-handle" aria-label="Reorder catalog">
+                                <img src="https://icongr.am/feather/move.svg?size=16" alt="" aria-hidden="true" />
+                            </span>
+                            <label :for="'catalog-' + element.type" class="catalog-type-label">
+                                {{ element.type }}
+                            </label>
+                            <input
+                                :id="'catalog-' + element.type"
+                                type="text"
+                                v-model="element.name"
+                                placeholder="Catalog Name"
+                            />
+                            <button type="button" class="delete-button" @click="removeCatalog(index)">
+                                <img src="https://icongr.am/feather/trash-2.svg?size=16" alt="Delete Catalog" />
+                            </button>
+                        </div>
+                    </template>
+                </Draggable>
             </div>
     
             <div class="form-actions">
@@ -76,7 +91,8 @@
 </template>
 
 <script setup>
-import { ref, watch, defineProps, defineEmits, onMounted } from 'vue'
+import { ref, watch, defineProps, defineEmits, onMounted, nextTick } from 'vue'
+import Draggable from 'vuedraggable'
 
 const props = defineProps({
   manifest: {
@@ -98,8 +114,11 @@ const formModel = ref({
 const jsonModel = ref('')
 
 watch(() => props.manifest, (newManifest) => {
-  formModel.value = JSON.parse(JSON.stringify(newManifest));
-  jsonModel.value = JSON.stringify(newManifest, null, 2);
+    const clone = JSON.parse(JSON.stringify(newManifest));
+    ensureCatalogDragKeys(clone.catalogs);
+    formModel.value = clone;
+    syncJsonModel();
+    nextTick(() => calculateMaxLabelWidth());
 }, { immediate: true });
 
 onMounted(() => {
@@ -121,34 +140,79 @@ function calculateMaxLabelWidth() {
 
 function toggleEditMode() {
   isAdvancedMode.value = !isAdvancedMode.value;
-  if (!isAdvancedMode.value) {
-    try {
-      formModel.value = JSON.parse(jsonModel.value);
-      calculateMaxLabelWidth();
-    } catch (e) {
-      alert('Invalid JSON format');
+    if (!isAdvancedMode.value) {
+        try {
+            const parsed = JSON.parse(jsonModel.value);
+            ensureCatalogDragKeys(parsed.catalogs);
+            formModel.value = parsed;
+            nextTick(() => calculateMaxLabelWidth());
+        } catch (e) {
+            alert('Invalid JSON format');
+        }
+    } else {
+        syncJsonModel();
     }
-  }
 }
 
 function handleSubmit() {
-  emits('update-manifest', formModel.value);
+    const sanitized = toSanitizedManifest(formModel.value);
+    emits('update-manifest', sanitized);
+    jsonModel.value = JSON.stringify(sanitized, null, 2);
 }
 
 function removeCatalog(index) {
   if (Array.isArray(formModel.value.catalogs)) {
     formModel.value.catalogs.splice(index, 1);
+        syncJsonModel();
+        nextTick(() => calculateMaxLabelWidth());
   }
 }
 
 function updateFromJson() {
   try {
-    formModel.value = JSON.parse(jsonModel.value);
-    emits('update-manifest', formModel.value);
+        const parsed = JSON.parse(jsonModel.value);
+        ensureCatalogDragKeys(parsed.catalogs);
+        formModel.value = parsed;
+        const sanitized = toSanitizedManifest(parsed);
+        emits('update-manifest', sanitized);
+        jsonModel.value = JSON.stringify(sanitized, null, 2);
     isAdvancedMode.value = false;
+        nextTick(() => calculateMaxLabelWidth());
   } catch (e) {
     alert('Invalid JSON format');
   }
+}
+
+function onCatalogReorder() {
+    syncJsonModel();
+    nextTick(() => calculateMaxLabelWidth());
+}
+
+function ensureCatalogDragKeys(catalogs) {
+    if (!Array.isArray(catalogs)) return;
+    const stamp = Date.now();
+    catalogs.forEach((catalog, idx) => {
+        if (!catalog.__dragKey) {
+            const rand = Math.random().toString(36).slice(2, 8);
+            catalog.__dragKey = `${catalog.type || 'catalog'}-${stamp}-${idx}-${rand}`;
+        }
+    });
+}
+
+function toSanitizedManifest(model) {
+    const clone = JSON.parse(JSON.stringify(model));
+    if (Array.isArray(clone.catalogs)) {
+        clone.catalogs.forEach((catalog) => {
+            if (catalog && typeof catalog === 'object') {
+                delete catalog.__dragKey;
+            }
+        });
+    }
+    return clone;
+}
+
+function syncJsonModel() {
+    jsonModel.value = JSON.stringify(toSanitizedManifest(formModel.value), null, 2);
 }
 </script>
 
@@ -265,10 +329,47 @@ textarea {
     color: #f5f5f5;
 }
 
+.catalog-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.catalog-ghost {
+    opacity: 0.4;
+}
+
 .catalog-item {
     display: flex;
     align-items: center;
-    margin-bottom: 10px;
+    gap: 10px;
+}
+
+.drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    cursor: grab;
+    border-radius: 6px;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.drag-handle:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.drag-handle img {
+    pointer-events: none;
+    filter: brightness(0) invert(1);
+    user-select: none;
 }
 
 .catalog-type-label {
@@ -301,6 +402,11 @@ textarea {
     .catalog-item {
         flex-direction: column;
         align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .drag-handle {
+        align-self: flex-end;
     }
 
     .catalog-type-label {
