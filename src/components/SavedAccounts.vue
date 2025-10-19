@@ -80,9 +80,6 @@ function removeSelected() {
   }
 }
 
-// expose methods to parent (via ref)
-defineExpose({ save, removeSelected })
-
 // when dropdown changes, update MRU + notify parent
 watch(selectedId, (id) => {
   const sel = accounts.value.find(a => a.id === id)
@@ -94,6 +91,26 @@ watch(selectedId, (id) => {
 })
 
 onMounted(load)
+
+function renameSelected() {
+  if (!selectedId.value) return
+  const idx = accounts.value.findIndex(a => a.id === selectedId.value)
+  if (idx === -1) return
+  const target = accounts.value[idx]
+  const currentLabel = target.label || target.email || ''
+  const nextLabel = window.prompt('Rename saved login label:', currentLabel)
+  if (nextLabel == null) return
+  const trimmed = nextLabel.trim()
+  if (!trimmed) {
+    alert('Label cannot be empty.')
+    return
+  }
+  accounts.value.splice(idx, 1, { ...target, label: trimmed })
+  persist()
+}
+
+// expose methods to parent (via ref)
+defineExpose({ save, removeSelected, renameSelected })
 </script>
 
 <template>
@@ -105,6 +122,14 @@ onMounted(load)
           {{ a.label }}
         </option>
       </select>
+      <button
+        type="button"
+        class="sam-button"
+        title="Rename saved login"
+        @click="renameSelected"
+      >
+        <i class="uil uil-edit"></i>
+      </button>
       <button type="button" class="sam-button" title="Delete selected" @click="removeSelected">
         <i class="uil uil-trash"></i>
       </button>
@@ -134,6 +159,11 @@ onMounted(load)
 .sam-button:hover {
   color:#e53935;              /* red hover */
   background:rgba(229,57,53,0.1);
+}
+
+.sam-button i {
+  font-size:20px;
+  line-height:1;
 }
 
 .uil-trash {
