@@ -6,6 +6,15 @@ const LS_KEY = 'sam.savedAccounts.v1'
 // reactive state
 const accounts = ref([])           // [{ id, label, serverUrl, email, lastUsedAt }]
 const selectedId = ref(null)       // currently selected account id
+const sortedAccounts = computed(() => {
+  return [...accounts.value].sort((a, b) => {
+    const left = (a.label || a.email || '').toLowerCase()
+    const right = (b.label || b.email || '').toLowerCase()
+    if (left < right) return -1
+    if (left > right) return 1
+    return 0
+  })
+})
 
 // emit selected account up to parent when user picks one
 const emit = defineEmits(['selected'])
@@ -92,7 +101,7 @@ onMounted(load)
     <label class="sam-label">Saved accounts</label>
     <div class="sam-row">
       <select v-model="selectedId" class="sam-select">
-        <option v-for="a in accounts" :key="a.id" :value="a.id">
+        <option v-for="a in sortedAccounts" :key="a.id" :value="a.id">
           {{ a.label }}
         </option>
       </select>
