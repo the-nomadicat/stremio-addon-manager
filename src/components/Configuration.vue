@@ -36,7 +36,8 @@ function backupConfig() {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
 
   const who = safeForFilename(currentEmail.value || 'no-email')
-  const ts = new Date().toISOString().replace(/[:.]/g, '-')
+  const now = new Date()
+  const ts = now.toISOString().slice(0, 19).replace('T', ' ').replace(/:/g, '-')
   const filename = `stremio-addons-${who}-${ts}.json`
 
   const url = URL.createObjectURL(blob)
