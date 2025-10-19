@@ -165,7 +165,6 @@ function getNestedObjectProperty(obj, path, defaultValue = null) {
 
 function setAuthKey(authKey) {
     stremioAuthKey.value = authKey
-    console.log('AuthKey set to: ', stremioAuthKey.value)
 }
 
 function setUserEmail(val) {
