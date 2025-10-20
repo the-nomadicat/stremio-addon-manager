@@ -194,6 +194,14 @@ function saveManifestEdit(updatedManifest) {
         alert('Failed to update manifest');
     }
 }
+
+function clearAddons() {
+    if (addons.value.length === 0) return;
+    const confirmed = window.confirm(`Clear all ${addons.value.length} addon${addons.value.length === 1 ? '' : 's'}?`);
+    if (confirmed) {
+        addons.value = [];
+    }
+}
 </script>
 
 <template>
@@ -209,20 +217,20 @@ function saveManifestEdit(updatedManifest) {
             </fieldset>
 
             <fieldset id="form_step1">
-                <legend>Step 1: Load Addons</legend>
-                <div class="step1-actions">
-                    <button class="button primary" @click="loadUserAddons">
-                        {{ loadAddonsButtonText }}
-                    </button>
-                    <div class="backup-actions" v-if="addons.length">
-                        <button type="button" class="button" @click="backupConfig" title="Export config to file">
-                            <i class="uil uil-export" style="margin-right:.35rem;"></i> Backup
+                <legend>Step 1: Load Addons / Restore a backup</legend>
+                <div class="action-row">
+                    <div class="left-actions">
+                        <button class="button primary" @click="loadUserAddons">
+                            {{ loadAddonsButtonText }}
                         </button>
-
+                        <button v-if="addons.length" type="button" class="button danger" @click="clearAddons" title="Clear all addons">
+                            Clear
+                        </button>
+                    </div>
+                    <div class="right-actions" v-if="stremioAuthKey">
                         <button type="button" class="button" @click="triggerRestore" title="Import config from file">
                             <i class="uil uil-import" style="margin-right:.35rem;"></i> Restore…
                         </button>
-
                         <input
                             ref="restoreInput"
                             type="file"
@@ -250,11 +258,20 @@ function saveManifestEdit(updatedManifest) {
             </fieldset>
 
             <fieldset id="form_step3">
-                <legend>Step 3: Sync Addons</legend>
-                <button type="button" class="button primary icon" @click="syncUserAddons">
-                    Sync to Stremio
-                    <img src="https://icongr.am/feather/loader.svg?size=16&amp;color=ffffff" alt="icon">
-                </button>
+                <legend>Step 3: Sync Addons / Create a backup</legend>
+                <div class="action-row">
+                    <div class="left-actions">
+                        <button type="button" class="button primary icon" @click="syncUserAddons">
+                            Sync to Stremio
+                            <img src="https://icongr.am/feather/loader.svg?size=16&amp;color=ffffff" alt="icon">
+                        </button>
+                    </div>
+                    <div class="right-actions" v-if="addons.length">
+                        <button type="button" class="button" @click="backupConfig" title="Export config to file">
+                            <i class="uil uil-export" style="margin-right:.35rem;"></i> Backup
+                        </button>
+                    </div>
+                </div>
             </fieldset>
         </form>
     </section>
@@ -277,18 +294,34 @@ function saveManifestEdit(updatedManifest) {
 .item.dragging { opacity: 0.6; }
 .item.dragging :where(.details, i) { opacity: 0; }
 
-.step1-actions {
+.action-row {
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    justify-content: space-between;
+    flex-wrap: wrap;
 }
 
-.backup-actions {
-    margin-left: auto;
+.left-actions {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     flex-wrap: wrap;
+}
+
+.right-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.button.danger {
+    background-color: #dc3545;
+}
+
+.button.danger:hover {
+    background-color: #c82333;
 }
 
 .modal {
