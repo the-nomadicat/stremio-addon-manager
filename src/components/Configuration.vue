@@ -220,7 +220,7 @@ function clearAddons() {
                 <legend>Step 1: Load Addons / Restore a backup</legend>
                 <div class="action-row">
                     <div class="left-actions">
-                        <button class="button primary" @click="loadUserAddons">
+                        <button v-if="stremioAuthKey" class="button primary" @click="loadUserAddons">
                             {{ loadAddonsButtonText }}
                         </button>
                         <button v-if="addons.length" type="button" class="button danger" @click="clearAddons" title="Clear all addons">
@@ -261,7 +261,7 @@ function clearAddons() {
                 <legend>Step 3: Sync Addons / Create a backup</legend>
                 <div class="action-row">
                     <div class="left-actions">
-                        <button type="button" class="button primary icon" @click="syncUserAddons">
+                        <button v-if="addons.length" type="button" class="button primary icon" @click="syncUserAddons">
                             Sync to Stremio
                             <img src="https://icongr.am/feather/loader.svg?size=16&amp;color=ffffff" alt="icon">
                         </button>
