@@ -28,6 +28,46 @@ function onSavedSelected(a) {
   }
 }
 
+function clearAuthKey() {
+  if (!authKey.value) return
+  authKey.value = ''
+  emitAuthKey()
+}
+
+function clearCredentials() {
+  if (email.value) {
+    email.value = ''
+  }
+  if (password.value) {
+    password.value = ''
+  }
+  emits('user-email', email.value)
+}
+
+function resetSavedSelection() {
+  savedRef.value?.resetSelection?.({ silent: true })
+}
+
+function onEmailInput() {
+  resetSavedSelection()
+  clearAuthKey()
+  emits('user-email', email.value)
+  emits('reset-addons')
+}
+
+function onPasswordInput() {
+  resetSavedSelection()
+  clearAuthKey()
+  emits('reset-addons')
+}
+
+function onAuthKeyInput() {
+  resetSavedSelection()
+  clearCredentials()
+  emitAuthKey()
+  emits('reset-addons')
+}
+
 async function loginUserPassword() {
   const trimmedEmail = email.value.trim()
 
@@ -96,7 +136,7 @@ function emitAuthKey() {
       type="text"
       v-model="email"
       placeholder="Stremio E-mail"
-      @input="emits('user-email', email)"
+      @input="onEmailInput"
     >
   </div>
   <div class="field-group">
@@ -106,6 +146,7 @@ function emitAuthKey() {
       type="password"
       v-model="password"
       placeholder="Stremio Password"
+      @input="onPasswordInput"
     >
   </div>
   <div class="field-group">
@@ -125,7 +166,7 @@ function emitAuthKey() {
       id="auth-key"
       type="password"
       v-model="authKey"
-      @input="emitAuthKey"
+      @input="onAuthKeyInput"
       placeholder="Paste Stremio AuthKey here..."
     >
   </div>

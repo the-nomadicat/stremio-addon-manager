@@ -29,6 +29,8 @@ const displayAccounts = computed(() => {
 // emit selected account up to parent when user picks one
 const emit = defineEmits(['selected'])
 
+let suppressNextEmit = false
+
 // ---- persistence helpers ----
 function load() {
   try {
@@ -86,16 +88,17 @@ function removeSelected() {
     if (!confirmed) return
 
     accounts.value.splice(idx, 1)
-    selectedId.value = accounts.value[0]?.id ?? DEFAULT_ID
+    selectedId.value = DEFAULT_ID
     persist()
-    // notify parent of new selection (or null)
-    const sel = accounts.value.find(a => a.id === selectedId.value) || null
-    emit('selected', sel)
   }
 }
 
 // when dropdown changes, update MRU + notify parent
 watch(selectedId, (id) => {
+  if (suppressNextEmit) {
+    suppressNextEmit = false
+    return
+  }
   if (id === DEFAULT_ID) {
     emit('selected', { ...defaultAccount })
     return
@@ -127,8 +130,14 @@ function renameSelected() {
   persist()
 }
 
-// expose methods to parent (via ref)
-defineExpose({ save, removeSelected, renameSelected })
+function resetSelection(options = {}) {
+  const { silent = false } = options
+  if (selectedId.value === DEFAULT_ID) return
+  suppressNextEmit = silent
+  selectedId.value = DEFAULT_ID
+}
+
+defineExpose({ save, removeSelected, renameSelected, resetSelection })
 </script>
 
 <template>
