@@ -201,10 +201,7 @@ function resetAddons() {
 
 function clearAddons() {
     if (addons.value.length === 0) return;
-    const confirmed = window.confirm(`Clear all ${addons.value.length} addon${addons.value.length === 1 ? '' : 's'}?`);
-    if (confirmed) {
-        resetAddons();
-    }
+    resetAddons();
 }
 </script>
 
@@ -222,17 +219,20 @@ function clearAddons() {
             </fieldset>
 
             <fieldset id="form_step1">
-                <legend>Step 1: Load Addons / Restore a backup</legend>
+                <legend>Step 1: Load Addons / Backup</legend>
                 <div class="action-row">
                     <div class="left-actions">
                         <button v-if="stremioAuthKey" class="button primary" @click="loadUserAddons">
                             {{ loadAddonsButtonText }}
                         </button>
                         <button v-if="addons.length" type="button" class="button danger" @click="clearAddons" title="Clear all addons">
-                            Clear
+                            Clear Addons
                         </button>
                     </div>
                     <div class="right-actions" v-if="stremioAuthKey">
+                         <button v-if="addons.length" type="button" class="button" @click="backupConfig" title="Export config to file">
+                            <i class="uil uil-export" style="margin-right:.35rem;"></i> Backup
+                        </button>
                         <button type="button" class="button" @click="triggerRestore" title="Import config from file">
                             <i class="uil uil-import" style="margin-right:.35rem;"></i> Restore…
                         </button>
@@ -263,17 +263,12 @@ function clearAddons() {
             </fieldset>
 
             <fieldset id="form_step3">
-                <legend>Step 3: Sync Addons / Create a backup</legend>
+                <legend>Step 3: Sync Addons</legend>
                 <div class="action-row">
                     <div class="left-actions">
                         <button v-if="addons.length" type="button" class="button primary icon" @click="syncUserAddons">
                             Sync to Stremio
                             <img src="https://icongr.am/feather/loader.svg?size=16&amp;color=ffffff" alt="icon">
-                        </button>
-                    </div>
-                    <div class="right-actions" v-if="addons.length">
-                        <button type="button" class="button" @click="backupConfig" title="Export config to file">
-                            <i class="uil uil-export" style="margin-right:.35rem;"></i> Backup
                         </button>
                     </div>
                 </div>
