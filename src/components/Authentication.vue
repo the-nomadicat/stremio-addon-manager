@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import SavedAccounts from './SavedAccounts.vue'
 
 const props = defineProps({
@@ -13,6 +13,10 @@ const emits = defineEmits(['auth-key', 'user-email', 'reset-addons'])
 
 const savedRef = ref(null)
 
+const canGetNewAuthKey = computed(() => {
+  return Boolean(email.value.trim() && password.value.trim())
+})
+
 function onSavedSelected(a) {
   emits('reset-addons')
   if (a) {
@@ -25,35 +29,53 @@ function onSavedSelected(a) {
 }
 
 async function loginUserPassword() {
+  const trimmedEmail = email.value.trim()
+
+  emits('reset-addons')
+  authKey.value = ''
+  emitAuthKey()
+
   try {
-    emits('reset-addons')
-    fetch(`${props.stremioAPIBase}login`, {
+    const resp = await fetch(`${props.stremioAPIBase}login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         authKey: null,
-        email: email.value,
+        email: trimmedEmail,
         password: password.value,
       })
-    }).then((resp) => {
-      resp.json().then((data) => {
-        authKey.value = data.result.authKey
-        emitAuthKey()
-
-        savedRef.value?.save({
-          serverUrl: props.stremioAPIBase,
-          email: email.value,
-          password: password.value,
-          authKey: authKey.value,
-          label: email.value,
-        })
-
-        emits('user-email', email.value)
-      })
     })
+
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`)
+    }
+
+    const data = await resp.json()
+
+    if (data?.error) {
+      throw new Error(data.error?.message || 'Login failed')
+    }
+
+    const nextAuthKey = data?.result?.authKey
+    if (!nextAuthKey) {
+      throw new Error('Logged in, but empty AuthKey received')
+    }
+
+    authKey.value = nextAuthKey
+    emitAuthKey()
+
+    savedRef.value?.save({
+      serverUrl: props.stremioAPIBase,
+      email: trimmedEmail,
+      password: password.value,
+      authKey: authKey.value,
+      label: trimmedEmail,
+    })
+
+    emits('user-email', trimmedEmail)
   } catch (err) {
     console.error(err)
-    alert('Login failed: ' + err.message)
+    alert(`Login failed: ${err?.message || 'Unknown error'}`)
   }
 }
 
@@ -67,28 +89,70 @@ function emitAuthKey() {
 
   <SavedAccounts ref="savedRef" @selected="onSavedSelected" />
 
-  <p class="grouped">
+  <div class="field-group">
+    <label class="field-label" for="auth-email">Email</label>
     <input
+      id="auth-email"
       type="text"
       v-model="email"
       placeholder="Stremio E-mail"
       @input="emits('user-email', email)"
     >
-    <input type="password" v-model="password" placeholder="Stremio Password">
-    <button class="button primary" @click="loginUserPassword">Login</button>
-  </p>
-  <p><strong>OR</strong></p>
-  <p class="grouped">
+  </div>
+  <div class="field-group">
+    <label class="field-label" for="auth-password">Password</label>
     <input
+      id="auth-password"
+      type="password"
+      v-model="password"
+      placeholder="Stremio Password"
+    >
+  </div>
+  <div class="field-group">
+    <button
+      type="button"
+      class="button primary"
+      @click="loginUserPassword"
+      :disabled="!canGetNewAuthKey"
+    >
+      Get new AuthKey
+    </button>
+  </div>
+  <p><strong>OR</strong></p>
+  <div class="field-group">
+    <label class="field-label" for="auth-key">AuthKey</label>
+    <input
+      id="auth-key"
       type="password"
       v-model="authKey"
       @input="emitAuthKey"
       placeholder="Paste Stremio AuthKey here..."
     >
-  </p>
+  </div>
 </template>
 
 <style scoped>
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.field-label {
+  font-weight: 600;
+  font-size: 1.5rem;
+}
+
+.field-group .button {
+  align-self: flex-start;
+}
+
+.field-group .button[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .sortable-list .item {
   list-style: none;
   display: flex;
