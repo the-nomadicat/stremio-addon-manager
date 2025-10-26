@@ -11,6 +11,8 @@ let stremioAuthKey = ref('');
 let addons = ref([])
 let loadAddonsButtonText = ref('Load Addons')
 
+const authRef = ref(null)
+
 let isEditModalVisible = ref(false);
 let currentManifest = ref({});
 let currentEditIdx = ref(null);
@@ -109,6 +111,7 @@ function loadUserAddons() {
                 return
             }
             addons.value = data.result.addons
+            authRef.value?.maybeOfferSaveAccount?.()
         })
     }).catch((error) => {
         console.error('Error fetching user addons', error)
@@ -211,6 +214,7 @@ function clearAddons() {
         <form onsubmit="return false;">
             <fieldset>
                 <Authentication
+                    ref="authRef"
                     :stremioAPIBase="stremioAPIBase"
                     @auth-key="setAuthKey"
                     @user-email="setUserEmail"

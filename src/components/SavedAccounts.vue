@@ -31,14 +31,28 @@ const emit = defineEmits(['selected'])
 
 let suppressNextEmit = false
 
-// ---- persistence helpers ----
+function normalizeLabel(label, email, authKey) {
+  const trimmedLabel = (label || '').trim()
+  if (trimmedLabel) return trimmedLabel
+  const trimmedEmail = (email || '').trim()
+  if (trimmedEmail) return trimmedEmail
+  const trimmedAuthKey = (authKey || '').trim()
+  if (trimmedAuthKey) return trimmedAuthKey
+  return 'Saved login'
+}
+
+function persist() {
+  localStorage.setItem(LS_KEY, JSON.stringify(accounts.value))
+}
+
 function load() {
   try {
     const raw = localStorage.getItem(LS_KEY)
-    accounts.value = raw ? JSON.parse(raw) : []
-    // auto-select most recently used
+    const parsed = raw ? JSON.parse(raw) : []
+    const entries = Array.isArray(parsed) ? parsed : []
+    accounts.value = entries
     if (accounts.value.length) {
-      const latest = [...accounts.value].sort((a,b) => b.lastUsedAt - a.lastUsedAt)[0]
+      const latest = [...accounts.value].sort((a, b) => (b.lastUsedAt || 0) - (a.lastUsedAt || 0))[0]
       selectedId.value = latest.id
       emit('selected', latest)
     } else {
@@ -51,30 +65,35 @@ function load() {
     emit('selected', { ...defaultAccount })
   }
 }
-function persist() {
-  localStorage.setItem(LS_KEY, JSON.stringify(accounts.value))
-}
-function makeId(email) {
-  return (email || '').trim().toLowerCase()
-}
 
-// ---- public API (parent will call save(...) after successful login) ----
 function save({ email, password, authKey, label }) {
-  const id = makeId(email)
   const now = Date.now()
+  const trimmedEmail = (email || '').trim()
+  const trimmedAuthKey = (authKey || '').trim()
+  const normalizedLabel = normalizeLabel(label, trimmedEmail, trimmedAuthKey)
+  const id = normalizedLabel
   const next = {
     id,
-    label: (label || email || '').trim(),
-    email: (email || '').trim(),
+    label: normalizedLabel,
+    email: trimmedEmail,
     password: password || '',   // ✅ store password
-    authKey: (authKey || '').trim(),
+    authKey: trimmedAuthKey,
     lastUsedAt: now,
   }
   const idx = accounts.value.findIndex(a => a.id === id)
-  if (idx >= 0) accounts.value.splice(idx, 1, { ...accounts.value[idx], ...next })
-  else accounts.value.push(next)
+  if (idx >= 0) {
+    accounts.value.splice(idx, 1, { ...accounts.value[idx], ...next })
+  } else {
+    accounts.value.push(next)
+  }
   selectedId.value = id
   persist()
+}
+
+function hasAuthKey(targetKey) {
+  const needle = (targetKey || '').trim()
+  if (!needle) return false
+  return accounts.value.some(a => (a.authKey || '').trim() === needle)
 }
 
 // remove currently selected
@@ -111,8 +130,6 @@ watch(selectedId, (id) => {
   emit('selected', sel || null)
 })
 
-onMounted(load)
-
 function renameSelected() {
   if (selectedId.value === DEFAULT_ID) return
   const idx = accounts.value.findIndex(a => a.id === selectedId.value)
@@ -126,7 +143,17 @@ function renameSelected() {
     alert('Label cannot be empty.')
     return
   }
-  accounts.value.splice(idx, 1, { ...target, label: trimmed })
+  const normalizedLabel = normalizeLabel(trimmed, target.email, target.authKey)
+  const updated = { ...target, label: normalizedLabel, id: normalizedLabel }
+  const duplicateIdx = accounts.value.findIndex((a, i) => i !== idx && a.id === normalizedLabel)
+  if (duplicateIdx >= 0) {
+    accounts.value.splice(duplicateIdx, 1, { ...accounts.value[duplicateIdx], ...updated })
+    accounts.value.splice(idx, 1)
+  } else {
+    accounts.value.splice(idx, 1, updated)
+  }
+  suppressNextEmit = true
+  selectedId.value = normalizedLabel
   persist()
 }
 
@@ -137,7 +164,9 @@ function resetSelection(options = {}) {
   selectedId.value = DEFAULT_ID
 }
 
-defineExpose({ save, removeSelected, renameSelected, resetSelection })
+onMounted(load)
+
+defineExpose({ save, removeSelected, renameSelected, resetSelection, hasAuthKey })
 </script>
 
 <template>

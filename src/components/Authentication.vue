@@ -68,6 +68,27 @@ function onAuthKeyInput() {
   emits('reset-addons')
 }
 
+function maybeOfferSaveAccount() {
+  const normalizedAuthKey = authKey.value.replaceAll('"', '').trim()
+  if (!normalizedAuthKey) return
+  const saved = savedRef.value
+  if (!saved?.hasAuthKey || saved.hasAuthKey(normalizedAuthKey)) return
+
+  const defaultLabel = email.value.trim() || 'Saved login'
+  const promptText = 'Save this account for quick access?\n\nEnter a label:'
+  const label = window.prompt(promptText, defaultLabel)
+  if (label == null) return
+  const trimmedLabel = label.trim()
+  if (!trimmedLabel) return
+  saved.save({
+    serverUrl: props.stremioAPIBase,
+    email: email.value.trim(),
+    password: password.value,
+    authKey: normalizedAuthKey,
+    label: trimmedLabel,
+  })
+}
+
 async function loginUserPassword() {
   const trimmedEmail = email.value.trim()
 
@@ -122,6 +143,8 @@ async function loginUserPassword() {
 function emitAuthKey() {
   emits('auth-key', authKey.value.replaceAll('"', '').trim())
 }
+
+defineExpose({ maybeOfferSaveAccount })
 </script>
 
 <template>
