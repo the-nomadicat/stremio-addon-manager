@@ -253,7 +253,7 @@ function clearAddons() {
             </fieldset>
 
             <fieldset id="form_step2">
-                <legend>Step 2: Re-Order Addons</legend>
+                <legend>Step 2: Edit/Re-Order Addons & Catalogs</legend>
                 <draggable v-if="addons.length" :list="addons" item-key="transportUrl" class="sortable-list" ghost-class="ghost"
                     @start="dragging = true" @end="dragging = false">
                     <template #item="{ element, index }">
@@ -265,7 +265,7 @@ function clearAddons() {
                             @edit-manifest="openEditModal" />
                     </template>
                 </draggable>
-                <p v-else-if="stremioAuthKey" class="empty-state">No addons loaded yet. Load or restore a configuration above to start arranging them.</p>
+                <p v-else-if="stremioAuthKey" class="empty-state">No addons loaded! Load addons or restore a configuration above to start editing them.</p>
             </fieldset>
 
             <fieldset id="form_step3">
@@ -278,7 +278,7 @@ function clearAddons() {
                         </button>
                     </div>
                 </div>
-                <p v-else-if="stremioAuthKey" class="empty-state">Once your addon list is ready, load or restore addons to enable syncing.</p>
+                <p v-else-if="stremioAuthKey" class="empty-state">Load addons or restore a configuration above to enable syncing.</p>
             </fieldset>
         </form>
     </section>
