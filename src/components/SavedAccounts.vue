@@ -4,16 +4,26 @@ import { ref, computed, watch, onMounted } from 'vue'
 const LS_KEY = 'sam.savedAccounts.v1'
 
 // reactive state
-const accounts = ref([])           // [{ id, label, serverUrl, email, lastUsedAt }]
-const selectedId = ref(null)       // currently selected account id
-const sortedAccounts = computed(() => {
-  return [...accounts.value].sort((a, b) => {
+const accounts = ref([])           // [{ id, label, email, password, authKey, lastUsedAt }]
+const DEFAULT_ID = ''
+const defaultAccount = Object.freeze({
+  id: DEFAULT_ID,
+  label: '-- Not Selected --',
+  email: '',
+  password: '',
+  authKey: '',
+  lastUsedAt: 0,
+})
+const selectedId = ref(DEFAULT_ID)       // currently selected account id
+const displayAccounts = computed(() => {
+  const sorted = [...accounts.value].sort((a, b) => {
     const left = (a.label || a.email || '').toLowerCase()
     const right = (b.label || b.email || '').toLowerCase()
     if (left < right) return -1
     if (left > right) return 1
     return 0
   })
+  return [defaultAccount, ...sorted]
 })
 
 // emit selected account up to parent when user picks one
@@ -29,26 +39,30 @@ function load() {
       const latest = [...accounts.value].sort((a,b) => b.lastUsedAt - a.lastUsedAt)[0]
       selectedId.value = latest.id
       emit('selected', latest)
+    } else {
+      selectedId.value = DEFAULT_ID
+      emit('selected', { ...defaultAccount })
     }
   } catch {
     accounts.value = []
+    selectedId.value = DEFAULT_ID
+    emit('selected', { ...defaultAccount })
   }
 }
 function persist() {
   localStorage.setItem(LS_KEY, JSON.stringify(accounts.value))
 }
-function makeId(serverUrl, email) {
-  return `${(serverUrl||'').trim().toLowerCase()}::${(email||'').trim().toLowerCase()}`
+function makeId(email) {
+  return (email || '').trim().toLowerCase()
 }
 
 // ---- public API (parent will call save(...) after successful login) ----
-function save({ serverUrl, email, password, authKey, label }) {
-  const id = makeId(serverUrl, email)
+function save({ email, password, authKey, label }) {
+  const id = makeId(email)
   const now = Date.now()
   const next = {
     id,
     label: (label || email || '').trim(),
-    serverUrl: (serverUrl || '').trim(),
     email: (email || '').trim(),
     password: password || '',   // ✅ store password
     authKey: (authKey || '').trim(),
@@ -72,7 +86,7 @@ function removeSelected() {
     if (!confirmed) return
 
     accounts.value.splice(idx, 1)
-    selectedId.value = accounts.value[0]?.id ?? null
+    selectedId.value = accounts.value[0]?.id ?? DEFAULT_ID
     persist()
     // notify parent of new selection (or null)
     const sel = accounts.value.find(a => a.id === selectedId.value) || null
@@ -82,6 +96,10 @@ function removeSelected() {
 
 // when dropdown changes, update MRU + notify parent
 watch(selectedId, (id) => {
+  if (id === DEFAULT_ID) {
+    emit('selected', { ...defaultAccount })
+    return
+  }
   const sel = accounts.value.find(a => a.id === id)
   if (sel) {
     sel.lastUsedAt = Date.now()
@@ -93,7 +111,7 @@ watch(selectedId, (id) => {
 onMounted(load)
 
 function renameSelected() {
-  if (!selectedId.value) return
+  if (selectedId.value === DEFAULT_ID) return
   const idx = accounts.value.findIndex(a => a.id === selectedId.value)
   if (idx === -1) return
   const target = accounts.value[idx]
@@ -118,7 +136,7 @@ defineExpose({ save, removeSelected, renameSelected })
     <label class="sam-label">Select saved account</label>
     <div class="sam-row">
       <select v-model="selectedId" class="sam-select">
-        <option v-for="a in sortedAccounts" :key="a.id" :value="a.id">
+        <option v-for="a in displayAccounts" :key="a.id" :value="a.id">
           {{ a.label }}
         </option>
       </select>
