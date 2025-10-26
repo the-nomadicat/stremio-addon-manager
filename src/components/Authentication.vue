@@ -88,7 +88,7 @@ function emitAuthKey() {
   <legend>Step 0: Authenticate</legend>
 
   <SavedAccounts ref="savedRef" @selected="onSavedSelected" />
-
+  <div class="separator"><strong>OR...</strong></div>
   <div class="field-group">
     <label class="field-label" for="auth-email">Email</label>
     <input
@@ -118,7 +118,7 @@ function emitAuthKey() {
       Get new AuthKey
     </button>
   </div>
-  <p><strong>OR</strong></p>
+  <div class="separator"><strong>OR...</strong></div>
   <div class="field-group">
     <label class="field-label" for="auth-key">AuthKey</label>
     <input
@@ -151,6 +151,11 @@ function emitAuthKey() {
 .field-group .button[disabled] {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.separator {
+  margin: 1.5rem 0;
+  font-weight: 600;
 }
 
 .sortable-list .item {

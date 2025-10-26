@@ -220,16 +220,16 @@ function clearAddons() {
 
             <fieldset id="form_step1">
                 <legend>Step 1: Load Addons / Backup</legend>
-                <div class="action-row">
+                <div v-if="stremioAuthKey" class="action-row">
                     <div class="left-actions">
-                        <button v-if="stremioAuthKey" class="button primary" @click="loadUserAddons">
+                        <button class="button primary" @click="loadUserAddons">
                             {{ loadAddonsButtonText }}
                         </button>
                         <button v-if="addons.length" type="button" class="button danger" @click="clearAddons" title="Clear all addons">
                             Clear Addons
                         </button>
                     </div>
-                    <div class="right-actions" v-if="stremioAuthKey">
+                    <div class="right-actions">
                          <button v-if="addons.length" type="button" class="button" @click="backupConfig" title="Export config to file">
                             <i class="uil uil-export" style="margin-right:.35rem;"></i> Backup
                         </button>
@@ -245,11 +245,12 @@ function clearAddons() {
                         />
                     </div>
                 </div>
+                <p v-else class="empty-state">Authenticate above via "Step 0: Authenticate" to load, backup, or restore addons.</p>
             </fieldset>
 
             <fieldset id="form_step2">
                 <legend>Step 2: Re-Order Addons</legend>
-                <draggable :list="addons" item-key="transportUrl" class="sortable-list" ghost-class="ghost"
+                <draggable v-if="addons.length" :list="addons" item-key="transportUrl" class="sortable-list" ghost-class="ghost"
                     @start="dragging = true" @end="dragging = false">
                     <template #item="{ element, index }">
                         <AddonItem :name="element.manifest.name" :idx="index" :manifestURL="element.transportUrl"
@@ -260,18 +261,20 @@ function clearAddons() {
                             @edit-manifest="openEditModal" />
                     </template>
                 </draggable>
+                <p v-else-if="stremioAuthKey" class="empty-state">No addons loaded yet. Load or restore a configuration above to start arranging them.</p>
             </fieldset>
 
             <fieldset id="form_step3">
                 <legend>Step 3: Sync Addons</legend>
-                <div class="action-row">
+                <div v-if="addons.length" class="action-row">
                     <div class="left-actions">
-                        <button v-if="addons.length" type="button" class="button primary icon" @click="syncUserAddons">
+                        <button type="button" class="button primary icon" @click="syncUserAddons">
                             Sync to Stremio
                             <img src="https://icongr.am/feather/loader.svg?size=16&amp;color=ffffff" alt="icon">
                         </button>
                     </div>
                 </div>
+                <p v-else-if="stremioAuthKey" class="empty-state">Once your addon list is ready, load or restore addons to enable syncing.</p>
             </fieldset>
         </form>
     </section>
@@ -350,6 +353,12 @@ function clearAddons() {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+}
+
+.empty-state {
+    margin-top: 0.75rem;
+    color: var(--color-grey, #aaa);
+    font-style: italic;
 }
 
 button {

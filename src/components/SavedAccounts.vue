@@ -114,8 +114,8 @@ defineExpose({ save, removeSelected, renameSelected })
 </script>
 
 <template>
-  <div class="saved-accounts">
-    <label class="sam-label">Saved accounts</label>
+  <div>
+    <label class="sam-label">Select saved account</label>
     <div class="sam-row">
       <select v-model="selectedId" class="sam-select">
         <option v-for="a in sortedAccounts" :key="a.id" :value="a.id">
@@ -138,7 +138,6 @@ defineExpose({ save, removeSelected, renameSelected })
 </template>
 
 <style scoped>
-.saved-accounts { margin-bottom: 1.5rem; }
 .sam-label { display:block; font-weight:600; margin-bottom:.25rem; }
 .sam-row { display:flex; gap:.5rem; align-items:center; }
 .sam-select { flex:1; min-width:0; padding:.4rem; }
