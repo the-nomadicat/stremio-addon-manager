@@ -9,11 +9,12 @@ const props = defineProps({
 const authKey = ref('')
 const email = ref('')
 const password = ref('')
-const emits = defineEmits(['auth-key', 'user-email'])
+const emits = defineEmits(['auth-key', 'user-email', 'reset-addons'])
 
 const savedRef = ref(null)
 
 function onSavedSelected(a) {
+  emits('reset-addons')
   if (a) {
     email.value = a.email
     password.value = a.password || ''
@@ -25,6 +26,7 @@ function onSavedSelected(a) {
 
 async function loginUserPassword() {
   try {
+    emits('reset-addons')
     fetch(`${props.stremioAPIBase}login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -195,11 +195,15 @@ function saveManifestEdit(updatedManifest) {
     }
 }
 
+function resetAddons() {
+    addons.value = [];
+}
+
 function clearAddons() {
     if (addons.value.length === 0) return;
     const confirmed = window.confirm(`Clear all ${addons.value.length} addon${addons.value.length === 1 ? '' : 's'}?`);
     if (confirmed) {
-        addons.value = [];
+        resetAddons();
     }
 }
 </script>
@@ -210,9 +214,10 @@ function clearAddons() {
         <form onsubmit="return false;">
             <fieldset>
                 <Authentication
-                  :stremioAPIBase="stremioAPIBase"
-                  @auth-key="setAuthKey"
-                  @user-email="setUserEmail"
+                    :stremioAPIBase="stremioAPIBase"
+                    @auth-key="setAuthKey"
+                    @user-email="setUserEmail"
+                    @reset-addons="resetAddons"
                 />
             </fieldset>
 
