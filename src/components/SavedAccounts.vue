@@ -41,6 +41,10 @@ function normalizeLabel(label, email, authKey) {
 }
 
 function persist() {
+  if (!accounts.value.length) {
+    localStorage.removeItem(LS_KEY)
+    return
+  }
   localStorage.setItem(LS_KEY, JSON.stringify(accounts.value))
 }
 
@@ -85,6 +89,19 @@ function hasAuthKey(targetKey) {
   const needle = (targetKey || '').trim()
   if (!needle) return false
   return accounts.value.some(a => (a.authKey || '').trim() === needle)
+}
+
+function hasAccounts() {
+  return accounts.value.length > 0
+}
+
+function clearAll() {
+  const hadAccounts = accounts.value.length > 0
+  accounts.value = []
+  selectedId.value = DEFAULT_ID
+  persist()
+  emit('selected', { ...defaultAccount })
+  return hadAccounts
 }
 
 // remove currently selected
@@ -153,7 +170,15 @@ function resetSelection(options = {}) {
 
 onMounted(load)
 
-defineExpose({ save, removeSelected, renameSelected, resetSelection, hasAuthKey })
+defineExpose({
+  save,
+  removeSelected,
+  renameSelected,
+  resetSelection,
+  hasAuthKey,
+  clearAll,
+  hasAccounts,
+})
 </script>
 
 <template>
