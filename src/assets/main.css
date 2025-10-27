@@ -28,3 +28,7 @@ input::placeholder,
 input {
     color: var(--font-color);
 }
+
+body.dialog-open {
+    overflow: hidden;
+}

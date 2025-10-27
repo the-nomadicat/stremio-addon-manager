@@ -4,6 +4,7 @@ import draggable from 'vuedraggable'
 import AddonItem from './AddonItem.vue'
 import Authentication from './Authentication.vue'
 import DynamicForm from './DynamicForm.vue'
+import { useDialog } from './DialogHost.vue'
 
 const stremioAPIBase = "https://api.strem.io/api/"
 const dragging = false
@@ -12,6 +13,7 @@ let addons = ref([])
 let loadAddonsButtonText = ref('Load Addons')
 
 const authRef = ref(null)
+const dialog = useDialog()
 
 let isEditModalVisible = ref(false);
 let currentManifest = ref({});
@@ -84,7 +86,7 @@ function restoreFromFile(e) {
 /* ===============================
    Existing logic
 ================================ */
-function loadUserAddons() {
+async function loadUserAddons() {
     const key = stremioAuthKey.value
     if (!key) {
         console.error('No auth key provided')
@@ -95,32 +97,45 @@ function loadUserAddons() {
     console.log('Loading addons...')
 
     const url = `${stremioAPIBase}addonCollectionGet`
-    fetch(url, {
-        method: 'POST',
-        body: JSON.stringify({
-            type: 'AddonCollectionGet',
-            authKey: key,
-            update: true,
+
+    try {
+        const resp = await fetch(url, {
+            method: 'POST',
+            body: JSON.stringify({
+                type: 'AddonCollectionGet',
+                authKey: key,
+                update: true,
+            })
         })
-    }).then((resp) => {
-        resp.json().then((data) => {
-            console.log(data)
-            if (!("result" in data) || data.result == null) {
-                console.error("Failed to fetch user addons: ", data)
-                alert('Failed to fetch user addons - are you sure you pasted the correct Stremio AuthKey?')
-                return
-            }
-            addons.value = data.result.addons
-            authRef.value?.maybeOfferSaveAccount?.()
-        })
-    }).catch((error) => {
+
+        const data = await resp.json()
+        console.log(data)
+
+        if (!resp.ok || !('result' in data) || data.result == null) {
+            console.error('Failed to fetch user addons: ', data)
+            await dialog.alert({
+                title: 'Failed to load addons',
+                message: 'Could not fetch user addons. Please confirm the Stremio AuthKey is correct and try again.',
+                confirmText: 'OK',
+            })
+            return
+        }
+
+        addons.value = data.result.addons
+        await authRef.value?.maybeOfferSaveAccount?.()
+    } catch (error) {
         console.error('Error fetching user addons', error)
-    }).finally(() => {
+        await dialog.alert({
+            title: 'Network error',
+            message: 'Something went wrong while connecting to Stremio. Please try again in a moment.',
+            confirmText: 'Dismiss',
+        })
+    } finally {
         loadAddonsButtonText.value = 'Load Addons'
-    })
+    }
 }
 
-function syncUserAddons() {
+async function syncUserAddons() {
     const key = stremioAuthKey.value
     if (!key) {
         console.error('No auth key provided')
@@ -129,30 +144,51 @@ function syncUserAddons() {
     console.log('Syncing addons...')
 
     const url = `${stremioAPIBase}addonCollectionSet`
-    fetch(url, {
-        method: 'POST',
-        body: JSON.stringify({
-            type: 'AddonCollectionSet',
-            authKey: key,
-            addons: addons.value,
+
+    try {
+        const resp = await fetch(url, {
+            method: 'POST',
+            body: JSON.stringify({
+                type: 'AddonCollectionSet',
+                authKey: key,
+                addons: addons.value,
+            })
         })
-    }).then((resp) => {
-        resp.json().then((data) => {
-            if (!("result" in data) || data.result == null) {
-                console.error("Sync failed: ", data)
-                alert('Sync failed if unknown error')
-                return
-            } else if (!data.result.success) {
-                alert("Failed to sync addons: " + data.result.error)
-            } else {
-                console.log("Sync complete: + ", data)
-                alert('Sync complete!')
-            }
+
+        const data = await resp.json()
+
+        if (!resp.ok || !('result' in data) || data.result == null) {
+            console.error('Sync failed: ', data)
+            await dialog.alert({
+                title: 'Sync failed',
+                message: 'Stremio did not accept the addon list. Please try again or check the console for details.',
+                confirmText: 'OK',
+            })
+            return
+        }
+
+        if (!data.result.success) {
+            await dialog.alert({
+                title: 'Sync failed',
+                message: data.result.error || 'Unknown error.',
+                confirmText: 'OK',
+            })
+        } else {
+            console.log('Sync complete: ', data)
+            await dialog.alert({
+                title: 'Sync complete',
+                message: 'Your addon list has been uploaded to Stremio.',
+                confirmText: 'Great!',
+            })
+        }
+    } catch (error) {
+        console.error('Error syncing addons', error)
+        await dialog.alert({
+            title: 'Network error',
+            message: `Error syncing addons: ${error}`,
+            confirmText: 'Dismiss',
         })
-    }).catch((error) => {
-        alert("Error syncing addons: " + error)
-        console.error('Error fetching user addons', error)
-    })
+    }
 }
 
 function removeAddon(idx) {
@@ -189,12 +225,16 @@ function closeEditModal() {
     document.body.classList.remove('modal-open');
 }
 
-function saveManifestEdit(updatedManifest) {
+async function saveManifestEdit(updatedManifest) {
     try {
         addons.value[currentEditIdx.value].manifest = updatedManifest;
         closeEditModal();
     } catch (e) {
-        alert('Failed to update manifest');
+        await dialog.alert({
+            title: 'Update failed',
+            message: 'Failed to update manifest.',
+            confirmText: 'OK',
+        })
     }
 }
 

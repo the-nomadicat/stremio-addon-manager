@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import SavedAccounts from './SavedAccounts.vue'
+import { useDialog } from './DialogHost.vue'
 
 const props = defineProps({
   stremioAPIBase: { type: String, required: true }
@@ -17,6 +18,7 @@ const emits = defineEmits(['auth-key', 'user-email', 'reset-addons'])
 const savedRef = ref(null)
 const savingEnabled = ref(false)
 const authKeyInput = ref(null)
+const dialog = useDialog()
 
 if (typeof window !== 'undefined') {
   try {
@@ -105,15 +107,19 @@ function persistSavingPreference(val) {
   }
 }
 
-function handleSavingToggle(nextEnabled) {
+async function handleSavingToggle(nextEnabled) {
   const targetState = Boolean(nextEnabled)
   if (targetState === savingEnabled.value) return
 
   if (!targetState) {
     const hasSaved = savedRef.value?.hasAccounts?.() || false
-    const confirmed = !hasSaved || window.confirm(
-      'Disabling saved accounts will delete all saved login details on this device. Continue?'
-    )
+    const confirmed = !hasSaved || await dialog.confirm({
+      title: 'Disable saved logins?',
+      message: 'Disabling saved accounts will delete all saved login details on this device.'
+            + '\n\nYour saved email, password, and auth keys will be removed from this browser.',
+      confirmText: 'Disable & delete accounts',
+      cancelText: 'Cancel',
+    })
     if (!confirmed) {
       savingEnabled.value = true
       persistSavingPreference(true)
@@ -159,7 +165,7 @@ function onAuthKeyInput(event) {
   emits('reset-addons')
 }
 
-function maybeOfferSaveAccount() {
+async function maybeOfferSaveAccount() {
   if (!savingEnabled.value) return
   const normalizedAuthKey = authKey.value.replaceAll('"', '').trim()
   if (!normalizedAuthKey) return
@@ -167,8 +173,16 @@ function maybeOfferSaveAccount() {
   if (!saved?.hasAuthKey || saved.hasAuthKey(normalizedAuthKey)) return
 
   const defaultLabel = email.value.trim() || 'Saved login'
-  const promptText = 'Save this account for quick access?\n\nEnter a label:'
-  const label = window.prompt(promptText, defaultLabel)
+  const promptText = 'Do you want to save this account for quick access?'
+                  + '\n\nEnter a label to identify it later, or Skip this step.'
+  const label = await dialog.prompt({
+    title: 'Save this account?',
+    message: promptText,
+    defaultValue: defaultLabel,
+    placeholder: defaultLabel,
+    confirmText: 'Save login',
+    cancelText: 'Skip',
+  })
   if (label == null) return
   const trimmedLabel = label.trim()
   if (!trimmedLabel) return
@@ -230,7 +244,11 @@ async function loginUserPassword() {
     emits('user-email', trimmedEmail)
   } catch (err) {
     console.error(err)
-    alert(`Login failed: ${err?.message || 'Unknown error'}`)
+    await dialog.alert({
+      title: 'Login failed',
+      message: err?.message || 'Unknown error',
+      confirmText: 'Dismiss',
+    })
   }
 }
 

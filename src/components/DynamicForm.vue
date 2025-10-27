@@ -102,6 +102,7 @@
 <script setup>
 import { ref, watch, defineEmits, onMounted, nextTick } from 'vue'
 import Draggable from 'vuedraggable'
+import { useDialog } from './DialogHost.vue'
 
 const props = defineProps({
   manifest: {
@@ -121,6 +122,7 @@ const formModel = ref({
   catalogs: []
 });
 const jsonModel = ref('')
+const dialog = useDialog()
 
 watch(() => props.manifest, (newManifest) => {
     const clone = JSON.parse(JSON.stringify(newManifest));
@@ -147,7 +149,7 @@ function calculateMaxLabelWidth() {
   });
 }
 
-function toggleEditMode() {
+async function toggleEditMode() {
   isAdvancedMode.value = !isAdvancedMode.value;
     if (!isAdvancedMode.value) {
         try {
@@ -156,7 +158,11 @@ function toggleEditMode() {
             formModel.value = parsed;
             nextTick(() => calculateMaxLabelWidth());
         } catch (e) {
-            alert('Invalid JSON format');
+            await dialog.alert({
+                title: 'Invalid JSON',
+                message: 'The provided JSON could not be parsed. Please fix any syntax errors and try again.',
+                confirmText: 'OK',
+            });
         }
     } else {
         syncJsonModel();
@@ -177,7 +183,7 @@ function removeCatalog(index) {
   }
 }
 
-function updateFromJson() {
+async function updateFromJson() {
   try {
         const parsed = JSON.parse(jsonModel.value);
         ensureCatalogDragKeys(parsed.catalogs);
@@ -188,7 +194,11 @@ function updateFromJson() {
     isAdvancedMode.value = false;
         nextTick(() => calculateMaxLabelWidth());
   } catch (e) {
-    alert('Invalid JSON format');
+        await dialog.alert({
+                title: 'Invalid JSON',
+                message: 'The provided JSON could not be parsed. Please fix any syntax errors and try again.',
+                confirmText: 'OK',
+        });
   }
 }
 

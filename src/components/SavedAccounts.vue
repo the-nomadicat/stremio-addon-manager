@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
+import { useDialog } from './DialogHost.vue'
 
 const LS_KEY = 'sam.savedAccounts.v1'
 
@@ -29,6 +30,7 @@ const displayAccounts = computed(() => {
 const emit = defineEmits(['selected'])
 
 let suppressNextEmit = false
+const dialog = useDialog()
 
 function normalizeLabel(label, email, authKey) {
   const trimmedLabel = (label || '').trim()
@@ -105,13 +107,18 @@ function clearAll() {
 }
 
 // remove currently selected
-function removeSelected() {
+async function removeSelected() {
   if (!selectedId.value) return
   const idx = accounts.value.findIndex(a => a.id === selectedId.value)
   if (idx >= 0) {
     const target = accounts.value[idx]
     const label = target?.label || target?.email || 'this account'
-    const confirmed = window.confirm(`Delete saved login for:\n\n${label}?`)
+    const confirmed = await dialog.confirm({
+      title: 'Delete saved login',
+      message: `Delete saved login for “${label}”?\n\nThis removes the stored credentials from this browser.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+    })
     if (!confirmed) return
 
     accounts.value.splice(idx, 1)
@@ -134,17 +141,28 @@ watch(selectedId, (id) => {
   emit('selected', sel || null)
 })
 
-function renameSelected() {
+async function renameSelected() {
   if (selectedId.value === DEFAULT_ID) return
   const idx = accounts.value.findIndex(a => a.id === selectedId.value)
   if (idx === -1) return
   const target = accounts.value[idx]
   const currentLabel = target.label || target.email || ''
-  const nextLabel = window.prompt('Rename saved login label:', currentLabel)
+  const nextLabel = await dialog.prompt({
+    title: 'Rename saved login',
+    message: 'Update the label shown in the saved accounts list.',
+    defaultValue: currentLabel,
+    placeholder: currentLabel,
+    confirmText: 'Save label',
+    cancelText: 'Cancel',
+  })
   if (nextLabel == null) return
   const trimmed = nextLabel.trim()
   if (!trimmed) {
-    alert('Label cannot be empty.')
+    await dialog.alert({
+      title: 'Invalid label',
+      message: 'Label cannot be empty.',
+      confirmText: 'OK',
+    })
     return
   }
   const normalizedLabel = normalizeLabel(trimmed, target.email, target.authKey)
