@@ -16,6 +16,7 @@ const emits = defineEmits(['auth-key', 'user-email', 'reset-addons'])
 
 const savedRef = ref(null)
 const savingEnabled = ref(false)
+const authKeyInput = ref(null)
 
 if (typeof window !== 'undefined') {
   try {
@@ -52,7 +53,19 @@ const canGetNewAuthKey = computed(() => {
 })
 
 function onSavedSelected(a) {
-  if (!savingEnabled.value || !a || !a.id) return
+  if (!savingEnabled.value) return
+
+  if (!a || !a.id) {
+    if (email.value || password.value) {
+      clearCredentials()
+    }
+    if (authKey.value) {
+      clearAuthKey()
+    }
+    emits('reset-addons')
+    return
+  }
+  
   emits('reset-addons')
   email.value = a.email
   password.value = a.password || ''
@@ -126,7 +139,20 @@ function onPasswordInput() {
   emits('reset-addons')
 }
 
-function onAuthKeyInput() {
+function onAuthKeyInput(event) {
+  const target = event?.target || authKeyInput.value
+  const activeElement = typeof document !== 'undefined' ? document.activeElement : null
+  const isManualEdit = target && activeElement === target
+
+  if (!isManualEdit) {
+    if (!authKey.value) return
+    authKey.value = ''
+    if (target) target.value = ''
+    emitAuthKey()
+    emits('reset-addons')
+    return
+  }
+
   resetSavedSelection()
   clearCredentials()
   emitAuthKey()
@@ -280,7 +306,10 @@ defineExpose({ maybeOfferSaveAccount })
     <label class="field-label" for="auth-key">AuthKey</label>
     <input
       id="auth-key"
+      ref="authKeyInput"
       type="password"
+      autocomplete="off"
+      data-bwignore="true"
       v-model="authKey"
       @input="onAuthKeyInput"
       placeholder="Paste Stremio AuthKey here..."
