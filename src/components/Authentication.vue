@@ -258,6 +258,7 @@ defineExpose({ maybeOfferSaveAccount })
       <span class="save-toggle__content">
         <span class="save-toggle__title">Enable saved logins on this device</span>
         <span class="save-toggle__subtitle">Store credentials locally for faster sign-in.</span>
+        <span class="save-toggle__warning">Only enable this on a trusted personal device. Do not use on shared or public computers.</span>
       </span>
       <span class="save-toggle__status" aria-hidden="true">
         {{ savingEnabled ? 'On' : 'Off' }}
@@ -431,6 +432,7 @@ defineExpose({ maybeOfferSaveAccount })
   flex-direction: column;
   align-items: flex-start;
   gap: 0.3rem;
+  text-align: left;
 }
 
 .save-toggle__title {
@@ -438,8 +440,15 @@ defineExpose({ maybeOfferSaveAccount })
 }
 
 .save-toggle__subtitle {
-  font-size: 0.85rem;
-  opacity: 0.75;
+  font-size: 1.00rem;
+  opacity: 0.82;
+}
+
+.save-toggle__warning {
+  font-size: 1.1rem;
+  color: #ffb74d;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
 .save-toggle__status {
