@@ -289,7 +289,7 @@ defineExpose({ maybeOfferSaveAccount })
     ref="savedRef"
     @selected="onSavedSelected"
   />
-  <div class="separator"><strong>OR...</strong></div>
+  <div class="separator"><strong>OR...</strong> Login using your Stremio account (Facebook login is not supported)</div>
   <div class="field-group">
     <label class="field-label" for="auth-email">Email</label>
     <input
@@ -320,7 +320,7 @@ defineExpose({ maybeOfferSaveAccount })
       Get new AuthKey
     </button>
   </div>
-  <div class="separator"><strong>OR...</strong></div>
+  <div class="separator"><strong>OR...</strong> Login using an authentication key (follow the guide above)</div>
   <div class="field-group">
     <label class="field-label" for="auth-key">AuthKey</label>
     <input

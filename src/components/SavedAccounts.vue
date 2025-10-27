@@ -201,7 +201,7 @@ defineExpose({
 
 <template>
   <div>
-    <label class="sam-label">Select saved account</label>
+    <label class="sam-label">Select a saved account</label>
     <div class="sam-row">
       <select v-model="selectedId" class="sam-select">
         <option v-for="a in displayAccounts" :key="a.id" :value="a.id">
