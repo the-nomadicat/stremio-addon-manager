@@ -4,7 +4,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 const LS_KEY = 'sam.savedAccounts.v1'
 
 // reactive state
-const accounts = ref([])           // [{ id, label, email, password, authKey, lastUsedAt }]
+const accounts = ref([])           // [{ id, label, email, password, authKey }]
 const DEFAULT_ID = ''
 const defaultAccount = Object.freeze({
   id: DEFAULT_ID,
@@ -12,7 +12,6 @@ const defaultAccount = Object.freeze({
   email: '',
   password: '',
   authKey: '',
-  lastUsedAt: 0,
 })
 const selectedId = ref(DEFAULT_ID)       // currently selected account id
 const displayAccounts = computed(() => {
@@ -51,14 +50,8 @@ function load() {
     const parsed = raw ? JSON.parse(raw) : []
     const entries = Array.isArray(parsed) ? parsed : []
     accounts.value = entries
-    if (accounts.value.length) {
-      const latest = [...accounts.value].sort((a, b) => (b.lastUsedAt || 0) - (a.lastUsedAt || 0))[0]
-      selectedId.value = latest.id
-      emit('selected', latest)
-    } else {
-      selectedId.value = DEFAULT_ID
-      emit('selected', { ...defaultAccount })
-    }
+    selectedId.value = DEFAULT_ID
+    emit('selected', { ...defaultAccount })
   } catch {
     accounts.value = []
     selectedId.value = DEFAULT_ID
@@ -67,7 +60,6 @@ function load() {
 }
 
 function save({ email, password, authKey, label }) {
-  const now = Date.now()
   const trimmedEmail = (email || '').trim()
   const trimmedAuthKey = (authKey || '').trim()
   const normalizedLabel = normalizeLabel(label, trimmedEmail, trimmedAuthKey)
@@ -78,7 +70,6 @@ function save({ email, password, authKey, label }) {
     email: trimmedEmail,
     password: password || '',   // ✅ store password
     authKey: trimmedAuthKey,
-    lastUsedAt: now,
   }
   const idx = accounts.value.findIndex(a => a.id === id)
   if (idx >= 0) {
@@ -112,7 +103,7 @@ function removeSelected() {
   }
 }
 
-// when dropdown changes, update MRU + notify parent
+// when dropdown changes, notify parent
 watch(selectedId, (id) => {
   if (suppressNextEmit) {
     suppressNextEmit = false
@@ -123,10 +114,6 @@ watch(selectedId, (id) => {
     return
   }
   const sel = accounts.value.find(a => a.id === id)
-  if (sel) {
-    sel.lastUsedAt = Date.now()
-    persist()
-  }
   emit('selected', sel || null)
 })
 
