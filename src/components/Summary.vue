@@ -52,6 +52,11 @@ const spotlightSections = [
         title: 'Control what shows on Home screen',
         copy: 'Show or hide individual catalog rows on the Stremio Home screen by toggling the Home icon, so only the stuff you care about is visible.',
         status: 'new'
+      },
+      {
+        title: 'Hide Cinemeta on Home screen',
+        copy: 'You can now easily hide the default Cinemeta catalogs from the Home screen, without uninstalling the Cinemeta addon — which previously wasn’t possible in Stremio.',
+        status: 'new'
       }
     ]
   }
@@ -64,7 +69,7 @@ const workflowSteps = [
     items: [
       'If you want fast account switching, turn on “Enable saved logins on this device”. This keeps multiple accounts (email / password / AuthKey) in this browser only.',
       'Either enter your Stremio email + password and press “Get new AuthKey”, or paste an existing AuthKey directly.',
-      'To copy an AuthKey manually: log into <a href="https://web.stremio.com/" target="_blank" rel="noopener">https://web.stremio.com/</a>, open the browser console, and run<div><code>JSON.parse(localStorage.getItem("profile")).auth.key</code></div>. Copy that value here.'
+      'To copy an AuthKey manually: log into <a href="https://web.stremio.com/" target="_blank" rel="noopener">https://web.stremio.com/</a>, open the browser console, and run<div><code>JSON.parse(localStorage.getItem("profile")).auth.key</code></div>Copy that value here into the AuthKey field.'
     ]
   },
   {
@@ -83,7 +88,6 @@ const workflowSteps = [
       'Reorder addons by dragging their handles. This affects which sources and catalogs show up first in Stremio.',
       'Open an addon’s editor to rename both the addon and its catalogs, delete catalogs you don’t need, and drag them into a better order — no manual JSON required.',
       'Toggle the Home icon on any catalog to show or hide that row on Stremio’s Home screen.',
-      'At last, you can hide the default Cinemeta catalogs from the Home screen, without deleting the addon.',
       'Review the updated configuration, so you’re happy with what will surface first, and what catalogs are hidden on the Home screen.'
     ]
   },
@@ -91,7 +95,7 @@ const workflowSteps = [
     step: 'Step 3',
     title: 'Sync to Stremio',
     items: [
-      'Check everything one last time: addon order, catalog names, which catalogs are visible on the Home screen.',
+      'Check everything one last time: the addons order, and within an addon also check the catalog names, their order, and which catalogs are visible on the Home screen.',
       'Click “Sync to Stremio” to apply the new layout to the currently signed-in account.',
       'If you don’t like the result, use the backup from Step 1 and restore it.'
     ]
