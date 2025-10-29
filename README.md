@@ -1,4 +1,7 @@
 # Stremio Addon Manager
+
+[![Live](https://img.shields.io/badge/Live-pages.dev-0?logo=cloudflarepages)](https://stremio-addon-manager.pages.dev/)
+
 Manage your Stremio addons and catalogs with ease.
 
 **WARNING: Use this at your own risk. This is not an official Stremio product and may break your Stremio installation. No support or warranty is given.**
