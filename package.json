@@ -15,7 +15,6 @@
     "vuedraggable": "^4.1.0"
   },
   "devDependencies": {
-    "@rollup/rollup-win32-x64-msvc": "^4.52.5",
     "@vitejs/plugin-vue": "^5.0.3",
     "vite": "^5.0.11"
   }
