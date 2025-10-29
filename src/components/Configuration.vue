@@ -250,7 +250,7 @@ function clearAddons() {
 
 <template>
     <section id="configure">
-        <h2>Configure</h2>
+        <h2>Configure Stremio</h2>
         <form onsubmit="return false;">
             <fieldset>
                 <Authentication

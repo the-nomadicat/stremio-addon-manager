@@ -1,55 +1,118 @@
 <template>
     <section id="faq">
         <h2>Frequently Asked Questions</h2>
+
         <details>
             <summary>
                 What risks are involved?
             </summary>
             <p>
-                This was whipped together in a couple of hours. It is not well tested and may break your Stremio
-                profile. Stremio functionality relies on the existence of certain addons (ie, Cinemeta). It is
-                possible that the order of addons is also important to some functionality.
+                This is an unofficial tool that talks directly to Stremio’s internal API. It is not endorsed by
+                Stremio and it can absolutely break things if misused.
             </p>
             <p>
-                There is currently no way to 'reset' your addons to previous configurations or default
-                configurations.
+                You can now reorder addons, reorder catalogs, hide or show catalogs on the Home screen, and even edit
+                an individual addon’s catalogs (rename them, delete them, change their order, and decide which ones
+                appear). If you remove or corrupt something that Stremio expects to exist (for example, Cinemeta),
+                parts of Stremio may stop working the way you expect.
+            </p>
+            <p>
+                You can back up your current configuration and later restore it, so you <em>do</em> have a way
+                to “reset” to a known good state — but only if you made a backup first. There is no built-in
+                “factory reset to safe defaults,” and restoring the wrong backup can still make things worse.
+                This tool is powerful, and in the wrong hands it’s destructive.
             </p>
         </details>
+
         <details>
             <summary>
                 Are my credentials safe?
             </summary>
             <p>
-                Yes. We only use your credentials to authenticate with the Stremio API. We do not store them in any way; as soon as you refresh the page they are gone.
+                Mostly, yes — if you use it on a trusted personal device the way it’s intended.
             </p>
             <p>
-                If you're still in doubt, we highly encourage you to go read the source code. You'll see there's no hidden funny business going on.
+                Here’s what actually happens:
+            </p>
+            <ul>
+                <li>
+                    Your Stremio email + password or AuthKey is used to authenticate directly with the Stremio API.
+                </li>
+                <li>
+                    By default, that information lives only in the current browser session and disappears on refresh.
+                </li>
+                <li>
+                    You can optionally enable “saved logins on this device.” If you turn that on, your login(s) —
+                    including email, password, and/or AuthKey — are stored locally in <strong>this</strong> browser so
+                    you can quickly switch between accounts later.
+                </li>
+                <li>
+                    Nothing is uploaded to any server controlled by this tool.
+                </li>
+                <li>
+                    Anyone with access to this browser profile / machine could reuse those saved credentials to act as
+                    you in Stremio. Do <strong>not</strong> enable saved logins on a shared or public computer.
+                </li>
+            </ul>
+            <p>
+                If you're unsure, we highly encourage you to read the source code. There’s no hidden network call that
+                exfiltrates credentials anywhere else.
             </p>
         </details>
+
         <details>
             <summary>
                 What is the developer console and how do I open it?
             </summary>
             <p>
-                The browser developer console is a tool which logs the information associated with a web application, such
-                as network requests and errors. It also allows you to interact with the loaded web page using JavaScript.
-                Most modern browsers have a developer console built in.
+                The browser developer console is a built-in tool that shows network requests, errors, and lets you run
+                JavaScript on the current page. You’ll use it if you want to manually copy your Stremio AuthKey from the
+                official Stremio web app.
             </p>
             <p>
-                Use <a href="https://balsamiq.com/support/faqs/browserconsole/" target="_blank">this guide</a> to open your
-                browsers developer console, ensuring have the Stremio web app open.
+                To open it:
             </p>
+            <ol>
+                <li>
+                    Go to
+                    <a href="https://web.stremio.com/" target="_blank" rel="noopener noreferrer">
+                        https://web.stremio.com/
+                    </a>
+                    and sign in.
+                </li>
+                <li>
+                    Open the developer console in your browser:
+                    <ul>
+                        <li>Chrome / Edge / Brave / Opera: <code>Ctrl+Shift+I</code> (Windows/Linux) or <code>Cmd+Option+I</code> (macOS), then click the “Console” tab</li>
+                        <li>Firefox: <code>Ctrl+Shift+K</code> (Windows/Linux) or <code>Cmd+Option+K</code> (macOS)</li>
+                    </ul>
+                </li>
+                <li>
+                    Paste:
+                    <code>JSON.parse(localStorage.getItem("profile")).auth.key</code>
+                </li>
+                <li>
+                    Copy the value and paste it into the AuthKey field in this tool.
+                </li>
+            </ol>
         </details>
+
         <details>
             <summary>
                 Can I use this to move Cinemeta catalogs from the top?
             </summary>
             <p>
-                Yes! This will allow you to move the Cinemeta provided catalogs (ie, Popular - Series/Movie and Featured -
-                Series/Movie) from the top of your catalog list.
+                Yes. You can reorder the default Cinemeta catalogs (for example, “Popular - Movies”, “Popular -
+                Series”, “Featured - Movies”, “Featured - Series”) so they’re no longer forced to the very top of
+                your catalog list.
             </p>
             <p>
-                Do note that the in-built 'Continue watching' catalog cannot be moved from the top.
+                You can also hide those Cinemeta catalogs from the Stremio Home screen without uninstalling the
+                Cinemeta addon itself — just use the Edit icon on the Cinemeta addon and then toggle the Home icon for any catalog you don’t want to see.
+            </p>
+            <p>
+                However, the built-in top row for “Continue watching” is still controlled by Stremio and cannot be moved
+                or hidden.
             </p>
         </details>
     </section>
