@@ -101,7 +101,7 @@ Click "Sync to Stremio" to apply the new order, names, visibility and layout to 
 This project is part of an ongoing community effort:
 - **Original concept and implementation:** [pancake3000/stremio-addon-manager](https://github.com/pancake3000/stremio-addon-manager)
 - **Major improvements and the first "Edit manifest" work (renaming/removing catalogs inside an addon):** [redd-ravenn/stremio-addon-manager](https://github.com/redd-ravenn/stremio-addon-manager)
-- **This fork (stremio-manager/stremio-addon-manager) adds:**
+- **This fork (the-nomadicat/stremio-addon-manager) adds:**
   - Catalog reordering within an addon (drag & drop)
   - Toggle whether each catalog appears on the Stremio Home screen (including Cinemeta catalogs, without uninstalling Cinemeta)
   - Global catalog reordering and hide/show without removing addons

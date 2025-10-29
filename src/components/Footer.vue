@@ -4,7 +4,7 @@
 <template>
   <div class="is-horizontal-align footer">
     <p>Made with ❤️, 🤖 and 🥞's - enjoy!</p>
-    <a href="https://github.com/pancake3000/stremio-addon-manager" target="_blank">Source Code</a>
+    <a href="https://github.com/the-nomadicat/stremio-addon-manager/" target="_blank">Source Code</a>
   </div>
 </template>
 
