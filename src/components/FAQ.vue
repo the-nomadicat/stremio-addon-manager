@@ -36,14 +36,14 @@
             </p>
             <ul>
                 <li>
-                    Your Stremio email + password or AuthKey is used to authenticate directly with the Stremio API.
+                    Your Stremio email / password or AuthKey are used to authenticate directly with the Stremio API.
                 </li>
                 <li>
                     By default, that information lives only in the current browser session and disappears on refresh.
                 </li>
                 <li>
                     You can optionally enable “saved logins on this device.” If you turn that on, your login(s) —
-                    including email, password, and/or AuthKey — are stored locally in <strong>this</strong> browser so
+                    including email, password, and AuthKey — are stored locally in <strong>this</strong> browser so
                     you can quickly switch between accounts later.
                 </li>
                 <li>

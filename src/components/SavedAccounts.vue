@@ -65,7 +65,7 @@ function load() {
   }
 }
 
-function save({ email, password, authKey, label }) {
+function save({ email, password, authKey, label, verifiedEmail, verifiedUid }) {
   const trimmedEmail = (email || '').trim()
   const trimmedAuthKey = (authKey || '').trim()
   const normalizedLabel = normalizeLabel(label, trimmedEmail, trimmedAuthKey)
@@ -76,6 +76,8 @@ function save({ email, password, authKey, label }) {
     email: trimmedEmail,
     password: password || '',   // ✅ store password
     authKey: trimmedAuthKey,
+    verifiedEmail: verifiedEmail || '',
+    verifiedUid: verifiedUid || '',
   }
   const idx = accounts.value.findIndex(a => a.id === id)
   if (idx >= 0) {
@@ -115,7 +117,8 @@ async function removeSelected() {
     const label = target?.label || target?.email || 'this account'
     const confirmed = await dialog.confirm({
       title: 'Delete saved login',
-      message: `Delete saved login for “${label}”?\n\nThis removes the stored credentials from this browser.`,
+      htmlMessage: `Delete saved login for "${label}"?`
+                + `<br><br>This removes the stored credentials from this browser.`,
       confirmText: 'Delete',
       cancelText: 'Cancel',
     })
@@ -149,7 +152,7 @@ async function renameSelected() {
   const currentLabel = target.label || target.email || ''
   const nextLabel = await dialog.prompt({
     title: 'Rename saved login',
-    message: 'Update the label shown in the saved accounts list.',
+    htmlMessage: 'Update the label shown in the saved accounts list.',
     defaultValue: currentLabel,
     placeholder: currentLabel,
     confirmText: 'Save label',
@@ -160,7 +163,7 @@ async function renameSelected() {
   if (!trimmed) {
     await dialog.alert({
       title: 'Invalid label',
-      message: 'Label cannot be empty.',
+      htmlMessage: 'Label cannot be empty.',
       confirmText: 'OK',
     })
     return
@@ -186,6 +189,35 @@ function resetSelection(options = {}) {
   selectedId.value = DEFAULT_ID
 }
 
+function findByEmail(targetEmail) {
+  const needle = (targetEmail || '').trim().toLowerCase();
+  if (!needle) return null;
+  return accounts.value.find(a => (a.email || '').trim().toLowerCase() === needle) || null;
+}
+
+function updateAuthKeyForEmail(targetEmail, newAuthKey) {
+  const rec = findByEmail(targetEmail);
+  if (!rec) return false;
+  const idx = accounts.value.findIndex(a => a.id === rec.id);
+  if (idx < 0) return false;
+  accounts.value.splice(idx, 1, { ...accounts.value[idx], authKey: (newAuthKey || '').trim() });
+  persist();
+  return true;
+}
+
+function getAllAccounts() {
+  return accounts.value;
+}
+
+function selectByEmail(targetEmail, options = {}) {
+  const { silent = false } = options
+  const account = findByEmail(targetEmail);
+  if (!account) return false;
+  suppressNextEmit = silent;
+  selectedId.value = account.id;
+  return true;
+}
+
 onMounted(load)
 
 defineExpose({
@@ -196,6 +228,10 @@ defineExpose({
   hasAuthKey,
   clearAll,
   hasAccounts,
+  findByEmail,
+  updateAuthKeyForEmail,
+  getAllAccounts,
+  selectByEmail,
 })
 </script>
 

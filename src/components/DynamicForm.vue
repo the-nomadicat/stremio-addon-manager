@@ -160,7 +160,7 @@ async function toggleEditMode() {
         } catch (e) {
             await dialog.alert({
                 title: 'Invalid JSON',
-                message: 'The provided JSON could not be parsed. Please fix any syntax errors and try again.',
+                htmlMessage: 'The provided JSON could not be parsed. Please fix any syntax errors and try again.',
                 confirmText: 'OK',
             });
         }
@@ -196,7 +196,7 @@ async function updateFromJson() {
   } catch (e) {
         await dialog.alert({
                 title: 'Invalid JSON',
-                message: 'The provided JSON could not be parsed. Please fix any syntax errors and try again.',
+                htmlMessage: 'The provided JSON could not be parsed. Please fix any syntax errors and try again.',
                 confirmText: 'OK',
         });
   }

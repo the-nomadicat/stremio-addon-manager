@@ -1,11 +1,15 @@
 <script setup>
 import { ref, computed } from 'vue'
 import SavedAccounts from './SavedAccounts.vue'
+import Toast from './Toast.vue'
 import { useDialog } from './DialogHost.vue'
 
 const props = defineProps({
   stremioAPIBase: { type: String, required: true }
 })
+
+// Toast ref for notifications
+const toastRef = ref(null)
 
 const SAVE_PREF_KEY = 'sam.saveAccounts.enabled'
 const ACCOUNTS_STORAGE_KEY = 'sam.savedAccounts.v1'
@@ -14,6 +18,9 @@ const authKey = ref('')
 const email = ref('')
 const password = ref('')
 const emits = defineEmits(['auth-key', 'user-email', 'reset-addons'])
+
+// Verification state
+const verifiedProfile = ref(null) // { email, _id, ... }
 
 const savedRef = ref(null)
 const savingEnabled = ref(false)
@@ -50,8 +57,10 @@ if (typeof window !== 'undefined') {
   }
 }
 
-const canGetNewAuthKey = computed(() => {
-  return Boolean(email.value.trim() && password.value.trim())
+const canLoadAddons = computed(() => {
+  const hasAuthKey = Boolean(authKey.value.trim())
+  const hasEmailPassword = Boolean(email.value.trim() && password.value.trim())
+  return hasAuthKey || hasEmailPassword
 })
 
 function onSavedSelected(a) {
@@ -64,6 +73,7 @@ function onSavedSelected(a) {
     if (authKey.value) {
       clearAuthKey()
     }
+    verifiedProfile.value = null
     emits('reset-addons')
     return
   }
@@ -72,6 +82,17 @@ function onSavedSelected(a) {
   email.value = a.email
   password.value = a.password || ''
   authKey.value = a.authKey || ''
+  
+  // If we have verified profile data from saved account, use it
+  if (a.verifiedEmail && a.verifiedUid) {
+    verifiedProfile.value = {
+      email: a.verifiedEmail,
+      _id: a.verifiedUid
+    }
+  } else {
+    verifiedProfile.value = null
+  }
+  
   emits('user-email', email.value)
   emitAuthKey()
 }
@@ -115,8 +136,8 @@ async function handleSavingToggle(nextEnabled) {
     const hasSaved = savedRef.value?.hasAccounts?.() || false
     const confirmed = !hasSaved || await dialog.confirm({
       title: 'Disable saved logins?',
-      message: 'Disabling saved accounts will delete all saved login details on this device.'
-            + '\n\nYour saved email, password, and auth keys will be removed from this browser.',
+      htmlMessage: `Disabling saved accounts will delete all saved login details on this device.`
+                + `<br><br>Your saved email, password, and auth keys will be removed from this browser.`,
       confirmText: 'Disable & delete accounts',
       cancelText: 'Cancel',
     })
@@ -134,14 +155,14 @@ async function handleSavingToggle(nextEnabled) {
 
 function onEmailInput() {
   resetSavedSelection()
-  clearAuthKey()
+  verifiedProfile.value = null
   emits('user-email', email.value)
   emits('reset-addons')
 }
 
 function onPasswordInput() {
   resetSavedSelection()
-  clearAuthKey()
+  verifiedProfile.value = null
   emits('reset-addons')
 }
 
@@ -154,109 +175,368 @@ function onAuthKeyInput(event) {
     if (!authKey.value) return
     authKey.value = ''
     if (target) target.value = ''
+    verifiedProfile.value = null
     emitAuthKey()
     emits('reset-addons')
     return
   }
 
   resetSavedSelection()
-  clearCredentials()
+  verifiedProfile.value = null
   emitAuthKey()
   emits('reset-addons')
 }
 
-async function maybeOfferSaveAccount() {
-  if (!savingEnabled.value) return
-  const normalizedAuthKey = authKey.value.replaceAll('"', '').trim()
-  if (!normalizedAuthKey) return
-  const saved = savedRef.value
-  if (!saved?.hasAuthKey || saved.hasAuthKey(normalizedAuthKey)) return
-
-  const defaultLabel = email.value.trim() || 'Saved login'
-  const promptText = 'Do you want to save this account for quick access?'
-                  + '\n\nEnter a label to identify it later, or Skip this step.'
-  const label = await dialog.prompt({
-    title: 'Save this account?',
-    message: promptText,
-    defaultValue: defaultLabel,
-    placeholder: defaultLabel,
-    confirmText: 'Save login',
-    cancelText: 'Skip',
-  })
-  if (label == null) return
-  const trimmedLabel = label.trim()
-  if (!trimmedLabel) return
-  saved.save({
-    serverUrl: props.stremioAPIBase,
-    email: email.value.trim(),
-    password: password.value,
-    authKey: normalizedAuthKey,
-    label: trimmedLabel,
-  })
-}
-
-async function loginUserPassword() {
-  const trimmedEmail = email.value.trim()
-
-  emits('reset-addons')
-  authKey.value = ''
-  emitAuthKey()
-
+// Silent verification for load addons flow - returns result instead of showing dialogs
+async function verifyCredentialsForLoad() {
   try {
-    const resp = await fetch(`${props.stremioAPIBase}login`, {
+    const trimmedEmail = email.value.trim();
+    const trimmedPassword = password.value.trim();
+    let key = authKey.value.trim();
+
+    // If we don't have an authKey but we do have email+password, log in first
+    if (!key && trimmedEmail && trimmedPassword) {
+      const loginResp = await fetch(`${props.stremioAPIBase}login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          authKey: null,
+          email: trimmedEmail,
+          password: trimmedPassword,
+        }),
+      });
+
+      if (!loginResp.ok) {
+        return { ok: false, error: `Login failed: HTTP ${loginResp.status}` };
+      }
+
+      const loginData = await loginResp.json();
+      if (loginData?.error) {
+        return { ok: false, error: loginData.error?.message || 'Login failed' };
+      }
+
+      key = loginData?.result?.authKey || '';
+      if (!key) {
+        return { ok: false, error: 'Login succeeded but no AuthKey received' };
+      }
+
+      authKey.value = key;
+      emitAuthKey();
+    }
+
+    if (!key) {
+      return { ok: false, error: 'No AuthKey available to verify' };
+    }
+
+    // Fetch the current user for an authKey
+    const userResp = await fetch(`${props.stremioAPIBase}getUser`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        authKey: null,
-        email: trimmedEmail,
-        password: password.value,
-      })
-    })
+      body: JSON.stringify({ authKey: key }),
+    });
 
-    if (!resp.ok) {
-      throw new Error(`HTTP ${resp.status}`)
+    if (!userResp.ok) {
+      return { ok: false, error: `getUser failed: HTTP ${userResp.status}` };
     }
 
-    const data = await resp.json()
-
-    if (data?.error) {
-      throw new Error(data.error?.message || 'Login failed')
+    const userData = await userResp.json();
+    if (userData?.error) {
+      return { ok: false, error: userData.error?.message || 'getUser error' };
     }
 
-    const nextAuthKey = data?.result?.authKey
-    if (!nextAuthKey) {
-      throw new Error('Logged in, but empty AuthKey received')
-    }
+    const user = userData?.result?.user || userData?.result || {};
+    const profileEmail = user.email || user.mail || '';
+    const uid = user._id || user.id || user.uid || '';
 
-    authKey.value = nextAuthKey
-    emitAuthKey()
+    verifiedProfile.value = { _id: uid, email: profileEmail };
 
-    if (savingEnabled.value) {
-      savedRef.value?.save({
-        serverUrl: props.stremioAPIBase,
-        email: trimmedEmail,
-        password: password.value,
-        authKey: authKey.value,
-        label: trimmedEmail,
-      })
-    }
-
-    emits('user-email', trimmedEmail)
+    return { ok: true, emailFromKey: profileEmail || '', uid };
   } catch (err) {
-    console.error(err)
-    await dialog.alert({
-      title: 'Login failed',
-      message: err?.message || 'Unknown error',
-      confirmText: 'Dismiss',
-    })
+    console.error('Verification failed:', err);
+    return { ok: false, error: err?.message || 'Unknown error' };
   }
+}
+
+// Helper function to update email with toast notification
+function updateEmailWithToast(emailFromKey) {
+  const previousEmail = email.value;
+  email.value = emailFromKey;
+  emits('user-email', emailFromKey);
+  
+  // Show toast with undo option
+  const truncatedEmail = emailFromKey.length > 30 
+    ? emailFromKey.substring(0, 27) + '...' 
+    : emailFromKey;
+  
+  toastRef.value?.show({
+    message: `Email set to ${truncatedEmail} from AuthKey.`,
+    duration: 5000,
+    onUndo: () => {
+      email.value = previousEmail;
+      emits('user-email', previousEmail);
+    }
+  });
 }
 
 function emitAuthKey() {
   emits('auth-key', authKey.value.replaceAll('"', '').trim())
 }
 
-defineExpose({ maybeOfferSaveAccount })
+// Comprehensive load addons verification flow
+async function handleLoadAddonsFlow() {
+  // First verify credentials
+  const verification = await verifyCredentialsForLoad();
+  
+  if (!verification.ok) {
+    return { ok: false, error: verification.error };
+  }
+  
+  const emailFromKey = verification.emailFromKey || '';
+  const emailField = email.value.trim();
+  
+  // Handle the flow based on savingEnabled state
+  if (!savingEnabled.value) {
+    // Branch A: savingEnabled === false
+    return await handleLoadFlowNoSaving(emailFromKey, emailField);
+  } else {
+    // Branch B: savingEnabled === true
+    return await handleLoadFlowWithSaving(emailFromKey, emailField);
+  }
+}
+
+async function handleLoadFlowNoSaving(emailFromKey, emailField) {
+  // Handle empty emailFromKey edge case
+  if (!emailFromKey) {
+    console.warn("Couldn't confirm the email for this AuthKey. Continuing anyway.");
+    return { ok: true };
+  }
+  
+  // Check if email field is empty
+  if (!emailField) {
+    // Update email with toast notification
+    updateEmailWithToast(emailFromKey);
+    return { ok: true };
+  }
+  
+  // Check for mismatch
+  const hasMismatch = emailField.toLowerCase() !== emailFromKey.toLowerCase();
+  
+  if (hasMismatch) {
+    // Update email, clear password, and inform user
+    email.value = emailFromKey;
+    password.value = '';
+    emits('user-email', emailFromKey);
+    
+    await dialog.alert({
+      title: 'Email updated',
+      htmlMessage: `The email field has been updated to match the AuthKey:`
+                + `<br><br><strong>${emailFromKey}</strong>`
+                + `<br><br>The password has been cleared.`,
+      confirmText: 'OK',
+    });
+  }
+  
+  return { ok: true };
+}
+
+async function handleLoadFlowWithSaving(emailFromKey, emailField) {
+  // Handle empty emailFromKey edge case first
+  if (!emailFromKey) {
+    await dialog.alert({
+      title: 'Warning',
+      htmlMessage: `Couldn't confirm the email for this AuthKey. You can still continue.`
+                + `<br><br>You may save this as an AuthKey-only entry if desired.`,
+      confirmText: 'OK',
+    });
+    
+    // Offer to save AuthKey-only if no saved entry exists
+    if (!savedRef.value?.hasAuthKey?.(authKey.value.trim())) {
+      await promptSaveAccount('');
+    }
+    
+    return { ok: true };
+  }
+  
+  // B1: emailField === ''
+  if (!emailField) {
+    // Check if account exists first
+    const existing = savedRef.value?.findByEmail?.(emailFromKey);
+    const currentAuthKey = authKey.value.trim();
+    
+    if (existing) {
+      // Load from existing saved account
+      email.value = emailFromKey;
+      password.value = existing.password || '';
+      emits('user-email', emailFromKey);
+      
+      // Update authKey if different
+      if (existing.authKey !== currentAuthKey) {
+        savedRef.value?.updateAuthKeyForEmail?.(emailFromKey, currentAuthKey);
+      }
+      
+      // Select the account in the dropdown
+      savedRef.value?.selectByEmail?.(emailFromKey, { silent: true });
+      
+      await dialog.alert({
+        title: 'Account loaded from saved logins',
+        htmlMessage: `We verified your AuthKey and found it belongs to:`
+                  + `<br><strong>${emailFromKey}</strong>`
+                  + `<br><br>This matches a saved account, so we've loaded the saved account details for you.`,
+        confirmText: 'OK',
+      });
+    } else {
+      // New account - update email with toast notification and offer to save
+      updateEmailWithToast(emailFromKey);
+      
+      await promptSaveAccount(emailFromKey);
+    }
+    
+    return { ok: true };
+  }
+  
+  // B2: mismatch - DETECT FIRST, then update fields, then prompt to save
+  const hasMismatch = emailField.toLowerCase() !== emailFromKey.toLowerCase();
+  
+  if (hasMismatch) {
+    const currentAuthKey = authKey.value.trim();
+    
+    // Check if account exists first
+    const existing = savedRef.value?.findByEmail?.(emailFromKey);
+    
+    if (existing) {
+      // Load from existing saved account
+      email.value = emailFromKey;
+      password.value = existing.password || '';
+      emits('user-email', emailFromKey);
+      
+      // Update authKey if different
+      if (existing.authKey !== currentAuthKey) {
+        savedRef.value?.updateAuthKeyForEmail?.(emailFromKey, currentAuthKey);
+      }
+      
+      // Select the account in the dropdown
+      savedRef.value?.selectByEmail?.(emailFromKey, { silent: true });
+      
+      await dialog.alert({
+        title: 'Email mismatch - Account loaded',
+        htmlMessage: `We verified your AuthKey and found it belongs to:`
+                  + `<br><strong>${emailFromKey}</strong>`
+                  + `<br><br>However, your email field showed:`
+                  + `<br>${emailField}`
+                  + `<br><br>Since <strong>${emailFromKey}</strong> matches a saved account, we've loaded the saved account for you.`,
+        confirmText: 'OK',
+      });
+    } else {
+      // New account - update email, clear password, offer to save
+      const originalEmail = emailField; // Capture before updating
+      email.value = emailFromKey;
+      password.value = '';
+      emits('user-email', emailFromKey);
+      
+      await promptSaveAccountWithUniqueId(emailFromKey, currentAuthKey, originalEmail);
+    }
+    
+    return { ok: true };
+  }
+  
+  // B3: match
+  const existing = savedRef.value?.findByEmail?.(emailFromKey);
+  const currentAuthKey = authKey.value.trim();
+  
+  if (existing) {
+    if (existing.authKey !== currentAuthKey) {
+      savedRef.value?.updateAuthKeyForEmail?.(emailFromKey, currentAuthKey);
+    }
+  } else {
+    await promptSaveAccount(emailFromKey);
+  }
+  
+  return { ok: true };
+}
+
+async function promptSaveAccount(emailForAccount) {
+  const defaultLabel = emailForAccount || email.value.trim() || 'Saved login';
+  const label = await dialog.prompt({
+    title: 'Save this account?',
+    htmlMessage: `Enter a label to identify ${emailForAccount || 'this account'}, or Skip.`,
+    defaultValue: defaultLabel,
+    placeholder: defaultLabel,
+    confirmText: 'Save login',
+    cancelText: 'Skip',
+  });
+  
+  if (label === null) return; // User clicked Skip
+  const trimmedLabel = label.trim();
+  if (!trimmedLabel) return;
+  
+  savedRef.value?.save({
+    serverUrl: props.stremioAPIBase,
+    email: emailForAccount || email.value.trim(),
+    password: password.value, // Will be empty string if cleared due to mismatch
+    authKey: authKey.value.trim(),
+    label: trimmedLabel,
+    verifiedEmail: verifiedProfile.value?.email || '',
+    verifiedUid: verifiedProfile.value?._id || '',
+  });
+}
+
+async function promptSaveAccountWithUniqueId(emailForAccount, currentAuthKey, originalEmail = null) {
+  // Generate a unique default label based on existing accounts
+  let defaultLabel = emailForAccount;
+  let counter = 2;
+  
+  // Check if there are already saved accounts with this email
+  const allAccounts = savedRef.value?.getAllAccounts?.() || [];
+  const accountsWithSameEmail = allAccounts.filter(a => 
+    (a.email || '').toLowerCase() === emailForAccount.toLowerCase()
+  );
+  
+  if (accountsWithSameEmail.length > 0) {
+    // Find a unique label
+    const existingLabels = new Set(allAccounts.map(a => a.label));
+    while (existingLabels.has(`${emailForAccount} (${counter})`)) {
+      counter++;
+    }
+    defaultLabel = `${emailForAccount} (${counter})`;
+  }
+  
+  // Build message based on whether there was a mismatch
+  let htmlMessage;
+  if (originalEmail) {
+    htmlMessage = `Email mismatch detected!`
+              + `<br><br>You entered: ${originalEmail}`
+              + `<br>AuthKey belongs to: ${emailForAccount}`
+              + `<br><br>The email field has been updated to ${emailForAccount} and the password has been cleared.`
+              + `<br><br>Would you like to save this account?`;
+  } else {
+    htmlMessage = `Enter a label to identify this login for ${emailForAccount}, or Skip.`;
+  }
+  
+  const label = await dialog.prompt({
+    title: 'Save this account?',
+    htmlMessage: htmlMessage,
+    defaultValue: defaultLabel,
+    placeholder: defaultLabel,
+    confirmText: 'Save login',
+    cancelText: 'Skip',
+  });
+  
+  if (label === null) return; // User clicked Skip
+  const trimmedLabel = label.trim();
+  if (!trimmedLabel) return;
+  
+  savedRef.value?.save({
+    serverUrl: props.stremioAPIBase,
+    email: emailForAccount,
+    password: '', // Empty password for AuthKey-only logins
+    authKey: currentAuthKey,
+    label: trimmedLabel,
+    verifiedEmail: verifiedProfile.value?.email || '',
+    verifiedUid: verifiedProfile.value?._id || '',
+  });
+}
+
+defineExpose({ verifyCredentialsForLoad, handleLoadAddonsFlow, canLoadAddons })
 </script>
 
 <template>
@@ -290,6 +570,7 @@ defineExpose({ maybeOfferSaveAccount })
     @selected="onSavedSelected"
   />
   <div class="separator"><strong>OR...</strong> Login using your Stremio account (Facebook login is not supported)</div>
+  
   <div class="field-group">
     <label class="field-label" for="auth-email">Email</label>
     <input
@@ -310,17 +591,7 @@ defineExpose({ maybeOfferSaveAccount })
       @input="onPasswordInput"
     >
   </div>
-  <div class="field-group">
-    <button
-      type="button"
-      class="button primary"
-      @click="loginUserPassword"
-      :disabled="!canGetNewAuthKey"
-    >
-      Get new AuthKey
-    </button>
-  </div>
-  <div class="separator"><strong>OR...</strong> Login using an authentication key (follow the guide above)</div>
+  <div class="separator"><strong>OR...</strong> Login using an authentication key (see "Step 0" in the guide above)</div>
   <div class="field-group">
     <label class="field-label" for="auth-key">AuthKey</label>
     <input
@@ -334,6 +605,9 @@ defineExpose({ maybeOfferSaveAccount })
       placeholder="Paste Stremio AuthKey here..."
     >
   </div>
+
+  <!-- Toast notifications -->
+  <Toast ref="toastRef" />
 </template>
 
 <style scoped>
