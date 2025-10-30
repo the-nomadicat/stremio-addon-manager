@@ -86,7 +86,7 @@ Contributors: please do not silently change this behavior.
 
 ## Step-by-Step Workflow (how the UI is meant to be used)
 **STEP 0: Authenticate**
-Log in using Stremio email + password (Facebook login is not supported here) to generate a new AuthKey, or paste an existing AuthKey from https://web.stremio.com/. If saved logins are enabled, you can just pick a stored account instead of typing credentials again.
+Log in using Stremio email + password (Facebook login is not supported here), or paste an existing AuthKey from https://web.stremio.com/. If saved logins are enabled, you can just pick a stored account instead of typing credentials again.
 
 **STEP 1: Load Addons / Backup**
 Click "Load Addons" to pull in the current addons and catalogs for that account. Click "Backup" to download a JSON snapshot of that configuration. Use "Restore…" later to re-import that snapshot or to clone the same setup onto another account.

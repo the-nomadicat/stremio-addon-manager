@@ -79,7 +79,7 @@ function openDialog(options) {
       id: `dialog-${++idCounter}`,
       type: options.type,
       title: options.title || defaultTitle(options.type),
-      message: options.message || '',
+      htmlMessage: options.htmlMessage || '',
       confirmText: options.confirmText || defaultConfirmText(options.type),
       cancelText: options.cancelText || 'Cancel',
       placeholder: options.placeholder || '',
@@ -155,7 +155,7 @@ provide(dialogSymbol, { confirm, prompt, alert })
             <h2 :id="activeDialog.id + '-title'" class="dialog-title">{{ activeDialog.title }}</h2>
           </header>
           <div class="dialog-body">
-            <p v-if="activeDialog.message" class="dialog-message">{{ activeDialog.message }}</p>
+            <p v-if="activeDialog.htmlMessage" class="dialog-message" v-html="activeDialog.htmlMessage"></p>
             <textarea
               v-if="isPrompt && activeDialog.multiline"
               v-model="inputValue"

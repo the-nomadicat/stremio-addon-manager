@@ -7,8 +7,8 @@ const spotlightSections = [
     title: 'Accounts & access',
     features: [
       {
-        title: 'Flexible sign-in with email / AuthKey',
-        copy: 'Sign in with your Stremio email + password to generate a new AuthKey here, or paste an existing AuthKey copied from Stremio Web (no Facebook login support).',
+        title: 'Flexible sign-in with email / password or AuthKey',
+        copy: 'Sign in with your Stremio email + password, or paste an existing AuthKey copied from Stremio Web (no Facebook login support).',
         status: 'core'
       },
       {
@@ -68,7 +68,7 @@ const workflowSteps = [
     title: 'Authenticate',
     items: [
       'If you want fast account switching, turn on “Enable saved logins on this device”. This keeps multiple accounts (email / password / AuthKey) in this browser only.',
-      'Either enter your Stremio email + password and press “Get new AuthKey”, or paste an existing AuthKey directly.',
+      'Either enter your Stremio email + password, or paste an existing AuthKey directly.',
       'To copy an AuthKey manually: log into <a href="https://web.stremio.com/" target="_blank" rel="noopener">https://web.stremio.com/</a>, open the browser console, and run<div><code>JSON.parse(localStorage.getItem("profile")).auth.key</code></div>Copy that value here into the AuthKey field.'
     ]
   },
@@ -343,7 +343,7 @@ function scrollToConfigure() {
 }
 
 .summary-accordion__toggle i {
-  font-size: 1.5rem;
+  font-size: 3rem;
   color: #15cd74;
 }
 
