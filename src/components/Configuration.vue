@@ -87,14 +87,31 @@ function restoreFromFile(e) {
    Existing logic
 ================================ */
 async function loadUserAddons() {
+    // First, verify credentials using the comprehensive flow
+    const verificationResult = await authRef.value?.handleLoadAddonsFlow?.();
+    
+    if (!verificationResult?.ok) {
+        console.error('Verification failed:', verificationResult?.error);
+        await dialog.alert({
+            title: 'Failed to load addons',
+            htmlMessage: verificationResult?.error || 'Could not verify credentials. Please check your details and try again.',
+            confirmText: 'OK',
+        });
+        return;
+    }
+    
     const key = stremioAuthKey.value
     if (!key) {
         console.error('No auth key provided')
+        await dialog.alert({
+            title: 'Failed to load addons',
+            htmlMessage: 'No AuthKey available. Please verify your credentials first.',
+            confirmText: 'OK',
+        });
         return
     }
 
     loadAddonsButtonText.value = 'Loading...'
-    console.log('Loading addons...')
 
     const url = `${stremioAPIBase}addonCollectionGet`
 
@@ -109,25 +126,23 @@ async function loadUserAddons() {
         })
 
         const data = await resp.json()
-        console.log(data)
 
         if (!resp.ok || !('result' in data) || data.result == null) {
             console.error('Failed to fetch user addons: ', data)
             await dialog.alert({
                 title: 'Failed to load addons',
-                message: 'Could not fetch user addons. Please confirm the Stremio AuthKey is correct and try again.',
+                htmlMessage: 'Could not fetch user addons. Please confirm the Stremio AuthKey is correct and try again.',
                 confirmText: 'OK',
             })
             return
         }
 
         addons.value = data.result.addons
-        await authRef.value?.maybeOfferSaveAccount?.()
     } catch (error) {
         console.error('Error fetching user addons', error)
         await dialog.alert({
             title: 'Network error',
-            message: 'Something went wrong while connecting to Stremio. Please try again in a moment.',
+            htmlMessage: 'Something went wrong while connecting to Stremio. Please try again in a moment.',
             confirmText: 'Dismiss',
         })
     } finally {
@@ -161,7 +176,7 @@ async function syncUserAddons() {
             console.error('Sync failed: ', data)
             await dialog.alert({
                 title: 'Sync failed',
-                message: 'Stremio did not accept the addon list. Please try again or check the console for details.',
+                htmlMessage: 'Stremio did not accept the addon list. Please try again or check the console for details.',
                 confirmText: 'OK',
             })
             return
@@ -170,14 +185,14 @@ async function syncUserAddons() {
         if (!data.result.success) {
             await dialog.alert({
                 title: 'Sync failed',
-                message: data.result.error || 'Unknown error.',
+                htmlMessage: data.result.error || 'Unknown error.',
                 confirmText: 'OK',
             })
         } else {
             console.log('Sync complete: ', data)
             await dialog.alert({
                 title: 'Sync complete',
-                message: 'Your addon list has been uploaded to Stremio.',
+                htmlMessage: 'Your addon list has been uploaded to Stremio.',
                 confirmText: 'Great!',
             })
         }
@@ -185,7 +200,7 @@ async function syncUserAddons() {
         console.error('Error syncing addons', error)
         await dialog.alert({
             title: 'Network error',
-            message: `Error syncing addons: ${error}`,
+            htmlMessage: `Error syncing addons: ${error}`,
             confirmText: 'Dismiss',
         })
     }
@@ -232,7 +247,7 @@ async function saveManifestEdit(updatedManifest) {
     } catch (e) {
         await dialog.alert({
             title: 'Update failed',
-            message: 'Failed to update manifest.',
+            htmlMessage: 'Failed to update manifest.',
             confirmText: 'OK',
         })
     }
@@ -264,7 +279,7 @@ function clearAddons() {
 
             <fieldset id="form_step1">
                 <legend>Step 1: Load Addons / Backup</legend>
-                <div v-if="stremioAuthKey" class="action-row">
+                <div v-if="authRef?.canLoadAddons" class="action-row">
                     <div class="left-actions">
                         <button class="button primary" @click="loadUserAddons">
                             {{ loadAddonsButtonText }}
