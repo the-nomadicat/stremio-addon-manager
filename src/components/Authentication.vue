@@ -19,9 +19,6 @@ const email = ref('')
 const password = ref('')
 const emits = defineEmits(['auth-key', 'user-email', 'reset-addons'])
 
-// Verification state
-const verifiedProfile = ref(null) // { email, _id, ... }
-
 const savedRef = ref(null)
 const savingEnabled = ref(false)
 const authKeyInput = ref(null)
@@ -66,14 +63,13 @@ const canLoadAddons = computed(() => {
 function onSavedSelected(a) {
   if (!savingEnabled.value) return
 
-  if (!a || !a.id) {
+  if (!a || !a.email) {
     if (email.value || password.value) {
       clearCredentials()
     }
     if (authKey.value) {
       clearAuthKey()
     }
-    verifiedProfile.value = null
     emits('reset-addons')
     return
   }
@@ -82,16 +78,6 @@ function onSavedSelected(a) {
   email.value = a.email
   password.value = a.password || ''
   authKey.value = a.authKey || ''
-  
-  // If we have verified profile data from saved account, use it
-  if (a.verifiedEmail && a.verifiedUid) {
-    verifiedProfile.value = {
-      email: a.verifiedEmail,
-      _id: a.verifiedUid
-    }
-  } else {
-    verifiedProfile.value = null
-  }
   
   emits('user-email', email.value)
   emitAuthKey()
@@ -155,14 +141,12 @@ async function handleSavingToggle(nextEnabled) {
 
 function onEmailInput() {
   resetSavedSelection()
-  verifiedProfile.value = null
   emits('user-email', email.value)
   emits('reset-addons')
 }
 
 function onPasswordInput() {
   resetSavedSelection()
-  verifiedProfile.value = null
   emits('reset-addons')
 }
 
@@ -175,14 +159,12 @@ function onAuthKeyInput(event) {
     if (!authKey.value) return
     authKey.value = ''
     if (target) target.value = ''
-    verifiedProfile.value = null
     emitAuthKey()
     emits('reset-addons')
     return
   }
 
   resetSavedSelection()
-  verifiedProfile.value = null
   emitAuthKey()
   emits('reset-addons')
 }
@@ -247,8 +229,6 @@ async function verifyCredentialsForLoad() {
     const user = userData?.result?.user || userData?.result || {};
     const profileEmail = user.email || user.mail || '';
     const uid = user._id || user.id || user.uid || '';
-
-    verifiedProfile.value = { _id: uid, email: profileEmail };
 
     return { ok: true, emailFromKey: profileEmail || '', uid };
   } catch (err) {
@@ -377,10 +357,12 @@ async function handleLoadFlowWithSaving(emailFromKey, emailField) {
       // Select the account in the dropdown
       savedRef.value?.selectByEmail?.(emailFromKey, { silent: true });
       
+      const accountDisplay = savedRef.value?.formatAccountDisplay?.(existing, { quoted: true, bold: true }) || `"<strong>${emailFromKey}</strong>"`;
+      
       await dialog.alert({
         title: 'Account loaded from saved logins',
-        htmlMessage: `We verified your AuthKey and found it belongs to:`
-                  + `<br><strong>${emailFromKey}</strong>`
+        htmlMessage: `We verified your AuthKey and it belongs to:`
+                  + `<br>${accountDisplay}`
                   + `<br><br>This matches a saved account, so we've loaded the saved account details for you.`,
         confirmText: 'OK',
       });
@@ -417,10 +399,12 @@ async function handleLoadFlowWithSaving(emailFromKey, emailField) {
       // Select the account in the dropdown
       savedRef.value?.selectByEmail?.(emailFromKey, { silent: true });
       
+      const accountDisplay = savedRef.value?.formatAccountDisplay?.(existing, { quoted: true, bold: true }) || `"<strong>${emailFromKey}</strong>"`;
+      
       await dialog.alert({
         title: 'Email mismatch - Account loaded',
-        htmlMessage: `We verified your AuthKey and found it belongs to:`
-                  + `<br><strong>${emailFromKey}</strong>`
+        htmlMessage: `We verified your AuthKey and it belongs to:`
+                  + `<br>${accountDisplay}`
                   + `<br><br>However, your email field showed:`
                   + `<br>${emailField}`
                   + `<br><br>Since <strong>${emailFromKey}</strong> matches a saved account, we've loaded the saved account for you.`,
@@ -433,7 +417,7 @@ async function handleLoadFlowWithSaving(emailFromKey, emailField) {
       password.value = '';
       emits('user-email', emailFromKey);
       
-      await promptSaveAccountWithUniqueId(emailFromKey, currentAuthKey, originalEmail);
+      await promptSaveNewAccountWithUniqueId(emailFromKey, currentAuthKey, originalEmail);
     }
     
     return { ok: true };
@@ -455,84 +439,64 @@ async function handleLoadFlowWithSaving(emailFromKey, emailField) {
 }
 
 async function promptSaveAccount(emailForAccount) {
-  const defaultLabel = emailForAccount || email.value.trim() || 'Saved login';
+  const emailToSave = emailForAccount || email.value.trim();
   const label = await dialog.prompt({
-    title: 'Save this account?',
-    htmlMessage: `Enter a label to identify ${emailForAccount || 'this account'}, or Skip.`,
-    defaultValue: defaultLabel,
-    placeholder: defaultLabel,
+    title: 'Save new account?',
+    htmlMessage: `Add a name for this account (optional). If left blank, the email will be used.`
+              + `<br><br>Email: <strong>${emailToSave}</strong>`,
+    defaultValue: '',
+    placeholder: emailToSave,
     confirmText: 'Save login',
     cancelText: 'Skip',
   });
   
   if (label === null) return; // User clicked Skip
+  
   const trimmedLabel = label.trim();
-  if (!trimmedLabel) return;
+  const finalLabel = trimmedLabel || emailToSave; // Use email if no label provided
   
   savedRef.value?.save({
-    serverUrl: props.stremioAPIBase,
-    email: emailForAccount || email.value.trim(),
+    email: emailToSave,
     password: password.value, // Will be empty string if cleared due to mismatch
     authKey: authKey.value.trim(),
-    label: trimmedLabel,
-    verifiedEmail: verifiedProfile.value?.email || '',
-    verifiedUid: verifiedProfile.value?._id || '',
+    label: finalLabel,
   });
 }
 
-async function promptSaveAccountWithUniqueId(emailForAccount, currentAuthKey, originalEmail = null) {
-  // Generate a unique default label based on existing accounts
-  let defaultLabel = emailForAccount;
-  let counter = 2;
-  
-  // Check if there are already saved accounts with this email
-  const allAccounts = savedRef.value?.getAllAccounts?.() || [];
-  const accountsWithSameEmail = allAccounts.filter(a => 
-    (a.email || '').toLowerCase() === emailForAccount.toLowerCase()
-  );
-  
-  if (accountsWithSameEmail.length > 0) {
-    // Find a unique label
-    const existingLabels = new Set(allAccounts.map(a => a.label));
-    while (existingLabels.has(`${emailForAccount} (${counter})`)) {
-      counter++;
-    }
-    defaultLabel = `${emailForAccount} (${counter})`;
-  }
-  
+async function promptSaveNewAccountWithUniqueId(emailForAccount, currentAuthKey, originalEmail = null) {
   // Build message based on whether there was a mismatch
   let htmlMessage;
   if (originalEmail) {
     htmlMessage = `Email mismatch detected!`
-              + `<br><br>You entered: ${originalEmail}`
-              + `<br>AuthKey belongs to: ${emailForAccount}`
-              + `<br><br>The email field has been updated to ${emailForAccount} and the password has been cleared.`
-              + `<br><br>Would you like to save this account?`;
+              + `<br><br>You entered: <strong>${originalEmail}</strong>`
+              + `<br>AuthKey belongs to: <strong>${emailForAccount}</strong>`
+              + `<br><br>The email field has been updated and the password has been cleared.`
+              + `<br><br>Add a name for this account (optional). If left blank, the email will be used.`
+              + `<br><br>Email: <strong>${emailForAccount}</strong>`;
   } else {
-    htmlMessage = `Enter a label to identify this login for ${emailForAccount}, or Skip.`;
+    htmlMessage = `Add a name for this account (optional). If left blank, the email will be used.`
+              + `<br><br>Email: <strong>${emailForAccount}</strong>`;
   }
   
   const label = await dialog.prompt({
-    title: 'Save this account?',
+    title: 'Save new account?',
     htmlMessage: htmlMessage,
-    defaultValue: defaultLabel,
-    placeholder: defaultLabel,
+    defaultValue: '',
+    placeholder: emailForAccount,
     confirmText: 'Save login',
     cancelText: 'Skip',
   });
   
   if (label === null) return; // User clicked Skip
+  
   const trimmedLabel = label.trim();
-  if (!trimmedLabel) return;
+  const finalLabel = trimmedLabel || emailForAccount; // Use email if no label provided
   
   savedRef.value?.save({
-    serverUrl: props.stremioAPIBase,
     email: emailForAccount,
     password: '', // Empty password for AuthKey-only logins
     authKey: currentAuthKey,
-    label: trimmedLabel,
-    verifiedEmail: verifiedProfile.value?.email || '',
-    verifiedUid: verifiedProfile.value?._id || '',
+    label: finalLabel,
   });
 }
 
@@ -569,7 +533,7 @@ defineExpose({ verifyCredentialsForLoad, handleLoadAddonsFlow, canLoadAddons })
     ref="savedRef"
     @selected="onSavedSelected"
   />
-  <div class="separator"><strong>OR...</strong> Login using your Stremio account (Facebook login is not supported)</div>
+  <div class="separator"><strong>OR...</strong> Use your Stremio account (Facebook login is not supported)</div>
   
   <div class="field-group">
     <label class="field-label" for="auth-email">Email</label>
@@ -591,7 +555,7 @@ defineExpose({ verifyCredentialsForLoad, handleLoadAddonsFlow, canLoadAddons })
       @input="onPasswordInput"
     >
   </div>
-  <div class="separator"><strong>OR...</strong> Login using an authentication key (see "Step 0" in the guide above)</div>
+  <div class="separator"><strong>OR...</strong> Use an authentication key (see "Step 0" in the guide above)</div>
   <div class="field-group">
     <label class="field-label" for="auth-key">AuthKey</label>
     <input

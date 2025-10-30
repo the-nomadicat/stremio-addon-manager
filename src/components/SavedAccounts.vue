@@ -2,19 +2,43 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useDialog } from './DialogHost.vue'
 
-const LS_KEY = 'sam.savedAccounts.v1'
+const LS_KEY = 'sam.savedAccounts'
 
 // reactive state
-const accounts = ref([])           // [{ id, label, email, password, authKey }]
-const DEFAULT_ID = ''
+const accounts = ref([])           // [{ email, label, password, authKey }]
+const DEFAULT_EMAIL = ''
 const defaultAccount = Object.freeze({
-  id: DEFAULT_ID,
+  email: DEFAULT_EMAIL,
   label: '-- Not Selected --',
-  email: '',
   password: '',
   authKey: '',
 })
-const selectedId = ref(DEFAULT_ID)       // currently selected account id
+const selectedEmail = ref(DEFAULT_EMAIL)       // currently selected account email (unique id)
+
+// Helper function to format account display text
+function formatAccountDisplay(account, options = {}) {
+  const { quoted = false, bold = false } = options
+  const email = account.email || ''
+  const label = account.label || ''
+  
+  let display
+  if (label && label !== email) {
+    display = `${label} [${email}]`
+  } else {
+    display = email
+  }
+  
+  if (quoted) {
+    display = `"${display}"`
+  }
+  
+  if (bold) {
+    display = `<strong>${display}</strong>`
+  }
+  
+  return display
+}
+
 const displayAccounts = computed(() => {
   const sorted = [...accounts.value].sort((a, b) => {
     const left = (a.label || a.email || '').toLowerCase()
@@ -32,16 +56,6 @@ const emit = defineEmits(['selected'])
 let suppressNextEmit = false
 const dialog = useDialog()
 
-function normalizeLabel(label, email, authKey) {
-  const trimmedLabel = (label || '').trim()
-  if (trimmedLabel) return trimmedLabel
-  const trimmedEmail = (email || '').trim()
-  if (trimmedEmail) return trimmedEmail
-  const trimmedAuthKey = (authKey || '').trim()
-  if (trimmedAuthKey) return trimmedAuthKey
-  return 'Saved login'
-}
-
 function persist() {
   if (!accounts.value.length) {
     localStorage.removeItem(LS_KEY)
@@ -52,40 +66,48 @@ function persist() {
 
 function load() {
   try {
-    const raw = localStorage.getItem(LS_KEY)
-    const parsed = raw ? JSON.parse(raw) : []
-    const entries = Array.isArray(parsed) ? parsed : []
-    accounts.value = entries
-    selectedId.value = DEFAULT_ID
-    emit('selected', { ...defaultAccount })
-  } catch {
-    accounts.value = []
-    selectedId.value = DEFAULT_ID
-    emit('selected', { ...defaultAccount })
+    const raw = localStorage.getItem(LS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    const entries = Array.isArray(parsed) ? parsed : [];
+    
+    accounts.value = entries;
+    selectedEmail.value = DEFAULT_EMAIL;
+    emit('selected', { ...defaultAccount });
+  } catch (err) {
+    console.error('Failed to load saved accounts:', err);
+    accounts.value = [];
+    selectedEmail.value = DEFAULT_EMAIL;
+    emit('selected', { ...defaultAccount });
   }
 }
 
-function save({ email, password, authKey, label, verifiedEmail, verifiedUid }) {
+function save({ email, password, authKey, label }) {
   const trimmedEmail = (email || '').trim()
-  const trimmedAuthKey = (authKey || '').trim()
-  const normalizedLabel = normalizeLabel(label, trimmedEmail, trimmedAuthKey)
-  const id = normalizedLabel
-  const next = {
-    id,
-    label: normalizedLabel,
-    email: trimmedEmail,
-    password: password || '',   // ✅ store password
-    authKey: trimmedAuthKey,
-    verifiedEmail: verifiedEmail || '',
-    verifiedUid: verifiedUid || '',
+  if (!trimmedEmail) {
+    console.warn('Cannot save account without email')
+    return
   }
-  const idx = accounts.value.findIndex(a => a.id === id)
+  
+  const trimmedAuthKey = (authKey || '').trim()
+  const trimmedLabel = (label || '').trim()
+  const displayLabel = trimmedLabel || trimmedEmail
+  
+  const next = {
+    email: trimmedEmail,
+    label: displayLabel,
+    password: password || '',
+    authKey: trimmedAuthKey,
+  }
+  
+  const idx = accounts.value.findIndex(a => (a.email || '').toLowerCase() === trimmedEmail.toLowerCase())
   if (idx >= 0) {
+    // Update existing account, merge new data
     accounts.value.splice(idx, 1, { ...accounts.value[idx], ...next })
   } else {
+    // Add new account
     accounts.value.push(next)
   }
-  selectedId.value = id
+  selectedEmail.value = trimmedEmail
   persist()
 }
 
@@ -102,7 +124,7 @@ function hasAccounts() {
 function clearAll() {
   const hadAccounts = accounts.value.length > 0
   accounts.value = []
-  selectedId.value = DEFAULT_ID
+  selectedEmail.value = DEFAULT_EMAIL
   persist()
   emit('selected', { ...defaultAccount })
   return hadAccounts
@@ -110,14 +132,14 @@ function clearAll() {
 
 // remove currently selected
 async function removeSelected() {
-  if (!selectedId.value) return
-  const idx = accounts.value.findIndex(a => a.id === selectedId.value)
+  if (!selectedEmail.value) return
+  const idx = accounts.value.findIndex(a => (a.email || '').toLowerCase() === selectedEmail.value.toLowerCase())
   if (idx >= 0) {
     const target = accounts.value[idx]
-    const label = target?.label || target?.email || 'this account'
+    const displayText = formatAccountDisplay(target, { quoted: true, bold: true })
     const confirmed = await dialog.confirm({
       title: 'Delete saved login',
-      htmlMessage: `Delete saved login for "${label}"?`
+      htmlMessage: `Delete saved login for ${displayText}?`
                 + `<br><br>This removes the stored credentials from this browser.`,
       confirmText: 'Delete',
       cancelText: 'Cancel',
@@ -125,68 +147,61 @@ async function removeSelected() {
     if (!confirmed) return
 
     accounts.value.splice(idx, 1)
-    selectedId.value = DEFAULT_ID
+    selectedEmail.value = DEFAULT_EMAIL
     persist()
   }
 }
 
 // when dropdown changes, notify parent
-watch(selectedId, (id) => {
+watch(selectedEmail, (email) => {
   if (suppressNextEmit) {
     suppressNextEmit = false
     return
   }
-  if (id === DEFAULT_ID) {
+  if (email === DEFAULT_EMAIL) {
     emit('selected', { ...defaultAccount })
     return
   }
-  const sel = accounts.value.find(a => a.id === id)
+  const sel = accounts.value.find(a => (a.email || '').toLowerCase() === email.toLowerCase())
   emit('selected', sel || null)
 })
 
 async function renameSelected() {
-  if (selectedId.value === DEFAULT_ID) return
-  const idx = accounts.value.findIndex(a => a.id === selectedId.value)
+  if (selectedEmail.value === DEFAULT_EMAIL) return
+  const idx = accounts.value.findIndex(a => (a.email || '').toLowerCase() === selectedEmail.value.toLowerCase())
   if (idx === -1) return
   const target = accounts.value[idx]
-  const currentLabel = target.label || target.email || ''
+  
+  // Check if this is the first time setting a label (label equals email)
+  const isFirstRename = target.label === target.email
+  const defaultValue = isFirstRename ? '' : target.label
+  const placeholder = target.email
+  
   const nextLabel = await dialog.prompt({
     title: 'Rename saved login',
-    htmlMessage: 'Update the label shown in the saved accounts list.',
-    defaultValue: currentLabel,
-    placeholder: currentLabel,
+    htmlMessage: `Add a name for this account (optional). If left blank, the email will be used.`
+              + `<br><br>Email: <strong>${target.email}</strong>`,
+    defaultValue: defaultValue,
+    placeholder: placeholder,
     confirmText: 'Save label',
     cancelText: 'Cancel',
   })
-  if (nextLabel == null) return
+  if (nextLabel === null) return // User cancelled
+  
   const trimmed = nextLabel.trim()
-  if (!trimmed) {
-    await dialog.alert({
-      title: 'Invalid label',
-      htmlMessage: 'Label cannot be empty.',
-      confirmText: 'OK',
-    })
-    return
-  }
-  const normalizedLabel = normalizeLabel(trimmed, target.email, target.authKey)
-  const updated = { ...target, label: normalizedLabel, id: normalizedLabel }
-  const duplicateIdx = accounts.value.findIndex((a, i) => i !== idx && a.id === normalizedLabel)
-  if (duplicateIdx >= 0) {
-    accounts.value.splice(duplicateIdx, 1, { ...accounts.value[duplicateIdx], ...updated })
-    accounts.value.splice(idx, 1)
-  } else {
-    accounts.value.splice(idx, 1, updated)
-  }
-  suppressNextEmit = true
-  selectedId.value = normalizedLabel
+  // If empty, set label to email (no custom label)
+  const finalLabel = trimmed || target.email
+  
+  // Simply update the label for this account
+  accounts.value.splice(idx, 1, { ...target, label: finalLabel })
   persist()
 }
 
 function resetSelection(options = {}) {
   const { silent = false } = options
-  if (selectedId.value === DEFAULT_ID) return
+  if (selectedEmail.value === DEFAULT_EMAIL) return
   suppressNextEmit = silent
-  selectedId.value = DEFAULT_ID
+  selectedEmail.value = DEFAULT_EMAIL
 }
 
 function findByEmail(targetEmail) {
@@ -198,7 +213,7 @@ function findByEmail(targetEmail) {
 function updateAuthKeyForEmail(targetEmail, newAuthKey) {
   const rec = findByEmail(targetEmail);
   if (!rec) return false;
-  const idx = accounts.value.findIndex(a => a.id === rec.id);
+  const idx = accounts.value.findIndex(a => (a.email || '').toLowerCase() === (rec.email || '').toLowerCase());
   if (idx < 0) return false;
   accounts.value.splice(idx, 1, { ...accounts.value[idx], authKey: (newAuthKey || '').trim() });
   persist();
@@ -214,7 +229,7 @@ function selectByEmail(targetEmail, options = {}) {
   const account = findByEmail(targetEmail);
   if (!account) return false;
   suppressNextEmit = silent;
-  selectedId.value = account.id;
+  selectedEmail.value = account.email;
   return true;
 }
 
@@ -232,6 +247,7 @@ defineExpose({
   updateAuthKeyForEmail,
   getAllAccounts,
   selectByEmail,
+  formatAccountDisplay,
 })
 </script>
 
@@ -239,9 +255,9 @@ defineExpose({
   <div>
     <label class="sam-label">Select a saved account</label>
     <div class="sam-row">
-      <select v-model="selectedId" class="sam-select">
-        <option v-for="a in displayAccounts" :key="a.id" :value="a.id">
-          {{ a.label }}
+      <select v-model="selectedEmail" class="sam-select">
+        <option v-for="a in displayAccounts" :key="a.email" :value="a.email">
+          {{ a.email === DEFAULT_EMAIL ? a.label : formatAccountDisplay(a) }}
         </option>
       </select>
       <button
