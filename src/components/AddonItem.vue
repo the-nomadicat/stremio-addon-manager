@@ -183,7 +183,7 @@
         <img src="https://icongr.am/feather/trash-2.svg?size=12">
       </button>
     </div>
-    <i class="uil uil-draggabledots"></i>
+    <i class="uil uil-draggabledots drag-handle"></i>
   </div>
 </template>
 
@@ -191,7 +191,7 @@
 .sortable-list .item {
   list-style: none;
   display: flex;
-  cursor: move;
+  cursor: default;
   align-items: center;
   border-radius: 5px;
   padding: 10px 13px;
@@ -287,12 +287,14 @@
   width: 20px;
   height: 20px;
   filter: brightness(0); /* Make icons black */
+  pointer-events: none; /* Prevent images from intercepting click events */
 }
 
 .delete img {
   width: 20px;
   height: 20px;
   filter: brightness(0) saturate(100%) invert(25%) sepia(85%) saturate(3500%) hue-rotate(345deg); /* Red color for delete */
+  pointer-events: none; /* Prevent images from intercepting click events */
 }
 
 .dark .visit-url img,
@@ -303,6 +305,17 @@
 
 .dark .delete img {
   filter: brightness(0) saturate(100%) invert(35%) sepia(85%) saturate(4000%) hue-rotate(345deg); /* Brighter red for dark mode */
+}
+
+.drag-handle {
+  cursor: move;
+  touch-action: none; /* Disable scrolling when touching drag handle */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.drag-handle:hover {
+  opacity: 0.7;
 }
 
 @media (max-width: 768px) {
