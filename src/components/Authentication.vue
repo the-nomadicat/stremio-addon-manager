@@ -363,7 +363,7 @@ async function handleLoadFlowWithSaving(emailFromKey, emailField) {
         title: 'Account loaded from saved logins',
         htmlMessage: `We verified your AuthKey and it belongs to:`
                   + `<br>${accountDisplay}`
-                  + `<br><br>This matches a saved account, so we've loaded the saved account details for you.`,
+                  + `<br><br>This matches a saved account, so we'll loaded the saved account details for you.`,
         confirmText: 'OK',
       });
     } else {
@@ -407,7 +407,7 @@ async function handleLoadFlowWithSaving(emailFromKey, emailField) {
                   + `<br>${accountDisplay}`
                   + `<br><br>However, your email field showed:`
                   + `<br>${emailField}`
-                  + `<br><br>Since <strong>${emailFromKey}</strong> matches a saved account, we've loaded the saved account for you.`,
+                  + `<br><br>Since <strong>${emailFromKey}</strong> matches a saved account, we'll loaded the saved account for you.`,
         confirmText: 'OK',
       });
     } else {
@@ -504,9 +504,10 @@ defineExpose({ verifyCredentialsForLoad, handleLoadAddonsFlow, canLoadAddons })
 </script>
 
 <template>
-  <legend>Step 0: Authenticate</legend>
+  <div>
+    <legend>Step 0: Authenticate</legend>
 
-  <div class="save-toggle" :class="{ 'is-enabled': savingEnabled }">
+    <div class="save-toggle" :class="{ 'is-enabled': savingEnabled }">
     <button
       type="button"
       class="save-toggle__button"
@@ -570,8 +571,11 @@ defineExpose({ verifyCredentialsForLoad, handleLoadAddonsFlow, canLoadAddons })
     >
   </div>
 
-  <!-- Toast notifications -->
-  <Toast ref="toastRef" />
+  <!-- Teleport Toast outside component tree to avoid fragment root issues -->
+  <Teleport to="body">
+    <Toast ref="toastRef" />
+  </Teleport>
+  </div>
 </template>
 
 <style scoped>

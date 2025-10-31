@@ -4,6 +4,7 @@ import draggable from 'vuedraggable'
 import AddonItem from './AddonItem.vue'
 import Authentication from './Authentication.vue'
 import DynamicForm from './DynamicForm.vue'
+import Toast from './Toast.vue'
 import { useDialog } from './DialogHost.vue'
 
 const stremioAPIBase = "https://api.strem.io/api/"
@@ -14,6 +15,7 @@ let loadAddonsButtonText = ref('Load Addons')
 
 const authRef = ref(null)
 const dialog = useDialog()
+const toastRef = ref(null)
 
 let isEditModalVisible = ref(false);
 let currentManifest = ref({});
@@ -35,7 +37,13 @@ function safeForFilename(s) {
     .slice(0, 80)
 }
 
-function backupConfig() {
+function isMobileDevice() {
+  // Check for mobile/tablet user agents
+  const userAgent = navigator.userAgent || navigator.vendor || window.opera
+  return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase())
+}
+
+async function backupConfig() {
   const payload = { addons: Array.isArray(addons.value) ? addons.value : [] }
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
 
@@ -44,43 +52,160 @@ function backupConfig() {
   const ts = now.toISOString().slice(0, 19).replace('T', ' ').replace(/:/g, '-')
   const filename = `stremio-addons-${who}-${ts}.json`
 
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  URL.revokeObjectURL(url)
+  try {
+    // Try modern Web Share API first (works great on mobile)
+    if (isMobileDevice() && navigator.share && navigator.canShare) {
+      const file = new File([blob], filename, { type: 'application/json' })
+      
+      if (navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'Stremio Addons Backup',
+            text: 'Backup of your Stremio addon configuration'
+          })
+          
+          toastRef.value?.show({
+            message: 'Backup shared successfully',
+            duration: 3000,
+          })
+          return
+        } catch (shareError) {
+          // User cancelled share or share failed, fall through to download
+          if (shareError.name !== 'AbortError') {
+            console.warn('Share failed, falling back to download:', shareError)
+          }
+        }
+      }
+    }
+
+    // Fallback: Traditional download link (works on desktop and most mobile browsers)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    
+    // Trigger download
+    a.click()
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }, 100)
+    
+    toastRef.value?.show({
+      message: 'Backup downloaded successfully',
+      duration: 3000,
+    })
+  } catch (error) {
+    console.error('Backup failed:', error)
+    
+    toastRef.value?.show({
+      message: 'Failed to create backup. Please try again.',
+      duration: 4000,
+    })
+  }
 }
 
 function triggerRestore() {
+  // On mobile, add accept attribute for better file picker UX
+  if (restoreInput.value && isMobileDevice()) {
+    restoreInput.value.accept = 'application/json,.json'
+  }
   restoreInput.value?.click()
 }
 
 function restoreFromFile(e) {
   const file = e.target.files?.[0]
-  if (!file) return
+  if (!file) {
+    return
+  }
+  
+  // Validate file type
+  if (!file.name.toLowerCase().endsWith('.json') && file.type !== 'application/json') {
+    toastRef.value?.show({
+      message: 'Please select a valid JSON backup file',
+      duration: 4000,
+    })
+    if (restoreInput.value) restoreInput.value.value = ''
+    return
+  }
+  
+  // Check file size (prevent loading huge files on mobile)
+  const maxSize = 5 * 1024 * 1024 // 5MB limit
+  if (file.size > maxSize) {
+    toastRef.value?.show({
+      message: 'File is too large. Maximum size is 5MB.',
+      duration: 4000,
+    })
+    if (restoreInput.value) restoreInput.value.value = ''
+    return
+  }
+  
   const reader = new FileReader()
+  
   reader.onload = () => {
     try {
       const data = JSON.parse(String(reader.result || '{}'))
+      
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid backup file format')
+      }
+      
       if (Array.isArray(data.addons)) {
+        const addonCount = data.addons.length
         addons.value = data.addons
+        
+        toastRef.value?.show({
+          message: `Successfully restored ${addonCount} addon${addonCount !== 1 ? 's' : ''}`,
+          duration: 3000,
+        })
       } else {
-        console.warn('Restore file missing "addons" array.')
+        toastRef.value?.show({
+          message: 'Backup file missing "addons" array',
+          duration: 4000,
+        })
       }
     } catch (err) {
       console.error('Restore failed', err)
+      
+      toastRef.value?.show({
+        message: 'Failed to restore backup. File may be corrupted.',
+        duration: 4000,
+      })
     } finally {
+      // Clear the input so the same file can be selected again
       if (restoreInput.value) restoreInput.value.value = ''
     }
   }
-  reader.onerror = () => {
-    console.error('Failed to read the selected file.')
+  
+  reader.onerror = (error) => {
+    console.error('Failed to read the selected file:', error)
+    
+    toastRef.value?.show({
+      message: 'Failed to read file. Please try again.',
+      duration: 4000,
+    })
+    
     if (restoreInput.value) restoreInput.value.value = ''
   }
-  reader.readAsText(file)
+  
+  // Read the file
+  try {
+    reader.readAsText(file)
+  } catch (error) {
+    console.error('Error starting file read:', error)
+    
+    toastRef.value?.show({
+      message: 'Error reading file. Please try again.',
+      duration: 4000,
+    })
+    
+    if (restoreInput.value) restoreInput.value.value = ''
+  }
 }
 
 /* ===============================
@@ -210,6 +335,10 @@ function removeAddon(idx) {
     addons.value.splice(idx, 1)
 }
 
+function handleToast({ message, duration }) {
+    toastRef.value?.show({ message, duration })
+}
+
 function getNestedObjectProperty(obj, path, defaultValue = null) {
     try {
         return path.split('.').reduce((acc, part) => acc && acc[part], obj)
@@ -317,7 +446,8 @@ function clearAddons() {
                             :isDeletable="!getNestedObjectProperty(element, 'flags.protected', false)"
                             :isConfigurable="getNestedObjectProperty(element, 'manifest.behaviorHints.configurable', false)"
                             @delete-addon="removeAddon"
-                            @edit-manifest="openEditModal" />
+                            @edit-manifest="openEditModal"
+                            @show-toast="handleToast" />
                     </template>
                 </draggable>
                 <p v-else-if="stremioAuthKey" class="empty-state">No addons loaded! Load addons or restore a configuration above to start editing them.</p>
@@ -336,12 +466,17 @@ function clearAddons() {
                 <p v-else-if="stremioAuthKey" class="empty-state">Load addons or restore a configuration above to enable syncing.</p>
             </fieldset>
         </form>
+        
+        <!-- Teleport Toast to body but keep within single root element -->
+        <Teleport to="body">
+            <Toast ref="toastRef" />
+        </Teleport>
     </section>
 
-    <div v-if="isEditModalVisible" class="modal" @click.self="closeEditModal">
+    <div v-if="isEditModalVisible" class="modal">
         <div class="modal-content">
             <h3>Edit manifest</h3>
-            <DynamicForm :manifest="currentManifest" @update-manifest="saveManifestEdit" />
+            <DynamicForm :manifest="currentManifest" @update-manifest="saveManifestEdit" @cancel="closeEditModal" />
         </div>
     </div>
 </template>
@@ -352,8 +487,16 @@ function clearAddons() {
     border-radius: 7px;
     padding: 30px 25px 20px;
     box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    touch-action: pan-y; /* Allow vertical scrolling but prevent horizontal scrolling during drag */
 }
-.item.dragging { opacity: 0.6; }
+
+.item {
+    touch-action: manipulation; /* Prevent double-tap zoom, allow single taps */
+}
+.item.dragging { 
+    opacity: 0.6;
+    touch-action: none; /* Disable all touch scrolling when actively dragging */
+}
 .item.dragging :where(.details, i) { opacity: 0; }
 
 .action-row {
@@ -380,10 +523,16 @@ function clearAddons() {
 
 .button.danger {
     background-color: #dc3545;
+    transition: background-color 0.15s ease, transform 0.1s ease;
 }
 
 .button.danger:hover {
     background-color: #c82333;
+}
+
+.button.danger:active {
+    background-color: #bd2130;
+    transform: scale(0.98);
 }
 
 .modal {
@@ -414,6 +563,34 @@ function clearAddons() {
     flex-direction: column;
 }
 
+/* Tablet and smaller screens - maximize screen usage */
+@media (max-width: 1024px) {
+    .modal-content {
+        width: 95vw;
+        max-width: none;
+        max-height: 95vh;
+        padding: 15px;
+        border-radius: 8px;
+    }
+}
+
+/* Mobile screens - full screen experience */
+@media (max-width: 768px) {
+    .modal {
+        padding: 0;
+        align-items: stretch;
+    }
+    
+    .modal-content {
+        width: 100%;
+        height: 100%;
+        max-height: none;
+        padding: 12px;
+        border-radius: 0;
+        margin: 0;
+    }
+}
+
 .empty-state {
     margin-top: 0.75rem;
     color: var(--color-grey, #aaa);
@@ -428,5 +605,81 @@ button {
     font-size: 16px;
     cursor: pointer;
     border-radius: 5px;
+    transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+button:hover {
+    background-color: #ff9500;
+}
+
+button:active {
+    background-color: #e68a00;
+    transform: scale(0.98);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.button.primary {
+    background-color: #14854f;
+}
+
+.button.primary:hover {
+    background-color: #117a45;
+}
+
+.button.primary:active {
+    background-color: #0e6538;
+    transform: scale(0.98);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.button.primary:disabled {
+    background-color: #6c757d;
+    opacity: 0.6;
+}
+
+/* Mobile responsive styles for buttons and action rows */
+@media (max-width: 768px) {
+    .action-row {
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: stretch;
+    }
+    
+    .left-actions,
+    .right-actions {
+        width: 100%;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .left-actions button,
+    .right-actions button {
+        width: 100%;
+        font-size: 15px;
+        padding: 12px 16px;
+        margin: 0;
+        box-sizing: border-box;
+    }
+}
+
+@media (max-width: 480px) {
+    button {
+        font-size: 14px;
+        padding: 10px 14px;
+    }
+    
+    .left-actions button,
+    .right-actions button {
+        font-size: 14px;
+        padding: 10px 14px;
+    }
 }
 </style>
