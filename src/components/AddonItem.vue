@@ -163,27 +163,31 @@
         <span>{{ name }}</span>
       </div>
     </div>
-    <div class="col">
-      <button class="button icon-only visit-url" title="Open addon configuration page in new window"
-        :disabled="!isConfigurable" 
-        @click="openAddonConfigurationPage" @mousedown.stop @touchstart.stop>
-        <img src="https://icongr.am/feather/arrow-up-right.svg?size=12">
-      </button>
-      <button class="button icon-only copy-url" title="Copy addon manifest URL to clipboard"
-        @click="copyManifestURLToClipboard" @mousedown.stop @touchstart.stop>
-        <img src="https://icongr.am/feather/clipboard.svg?size=12">
-      </button>
-      <button class="button icon-only edit-manifest" title="Edit manifest JSON" 
-        @click="openEditManifestModal" @mousedown.stop @touchstart.stop>
-        <img src="https://icongr.am/feather/edit.svg?size=12">
-      </button>
-      <button class="button icon-only delete" title="Remove addon from list" 
-        :disabled="!isDeletable"
-        @click="removeAddon" @mousedown.stop @touchstart.stop>
-        <img src="https://icongr.am/feather/trash-2.svg?size=12">
-      </button>
+    <div class="actions-wrapper">
+      <div class="col">
+        <button class="button icon-only visit-url" title="Open addon configuration page in new window"
+          :disabled="!isConfigurable" 
+          @click="openAddonConfigurationPage" @mousedown.stop @touchstart.stop>
+          <img src="https://icongr.am/feather/arrow-up-right.svg?size=12">
+        </button>
+        <button class="button icon-only copy-url" title="Copy addon manifest URL to clipboard"
+          @click="copyManifestURLToClipboard" @mousedown.stop @touchstart.stop>
+          <img src="https://icongr.am/feather/clipboard.svg?size=12">
+        </button>
+        <button class="button icon-only edit-manifest" title="Edit manifest JSON" 
+          @click="openEditManifestModal" @mousedown.stop @touchstart.stop>
+          <img src="https://icongr.am/feather/edit.svg?size=12">
+        </button>
+        <button class="button icon-only delete" title="Remove addon from list" 
+          :disabled="!isDeletable"
+          @click="removeAddon" @mousedown.stop @touchstart.stop>
+          <img src="https://icongr.am/feather/trash-2.svg?size=12">
+        </button>
+      </div>
+      <span class="drag-handle" aria-label="Reorder addon">
+        <img src="https://icongr.am/feather/move.svg?size=32" alt="" aria-hidden="true" />
+      </span>
     </div>
-    <i class="uil uil-draggabledots drag-handle"></i>
   </div>
 </template>
 
@@ -199,6 +203,16 @@
   border: 1px solid #ccc;
   justify-content: space-between;
   flex-wrap: wrap;
+  position: relative; /* Needed for absolute positioning of drag handle on mobile */
+  flex-direction: row; /* Keep horizontal layout on desktop */
+}
+
+@media (max-width: 768px) {
+  .sortable-list .item {
+    flex-direction: column; /* Stack vertically on mobile */
+    align-items: flex-start; /* Left align everything */
+    padding: 10px;
+  }
 }
 
 .dark .sortable-list .item {
@@ -224,10 +238,20 @@
 
 .col {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  gap: 6px; /* Consistent gap at all sizes */
+  flex-wrap: nowrap; /* Never wrap the buttons */
   align-items: center;
-  min-width: 200px;
+  min-width: auto;
+  flex-shrink: 1; /* Allow buttons to shrink if needed */
+}
+
+.actions-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0; /* No gap needed, drag-handle has its own margin */
+  flex-shrink: 0; /* Prevent shrinking on mobile */
+  width: 100%;
+  justify-content: space-between; /* Push buttons left, drag handle right */
 }
 
 .button {
@@ -312,6 +336,21 @@
   touch-action: none; /* Disable scrolling when touching drag handle */
   user-select: none;
   -webkit-user-select: none;
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  margin-left: 12px;
+}
+
+.drag-handle img {
+  width: 32px;
+  height: 32px;
+  filter: brightness(0); /* Make icon black */
+  pointer-events: none;
+}
+
+.dark .drag-handle img {
+  filter: brightness(0) invert(1); /* Make icon white in dark mode */
 }
 
 .drag-handle:hover {
@@ -321,13 +360,13 @@
 @media (max-width: 768px) {
   .sortable-list .item {
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start; /* Left align everything */
     padding: 10px;
   }
 
   .item .details {
     margin-bottom: 10px;
-    text-align: center;
+    align-self: flex-start; /* Force left alignment */
   }
 
   .item .details img {
@@ -335,49 +374,78 @@
     margin-bottom: 8px;
   }
 
+  .actions-wrapper {
+    width: 100%;
+    justify-content: space-between; /* Push buttons left, drag handle right */
+    margin-top: 10px;
+    flex-wrap: nowrap; /* Never wrap */
+  }
+
   .col {
     flex-direction: row;
-    gap: 8px;
-    justify-content: center;
-    width: 100%;
-    margin-top: 10px;
+    gap: 6px; /* Reduce gap to fit more on one line */
+    justify-content: flex-start;
+    min-width: auto;
+    flex-wrap: nowrap; /* Never wrap the buttons */
+    flex-shrink: 1; /* Allow buttons to shrink if needed */
   }
 
   .button {
     padding: 6px;
+    min-width: 32px; /* Ensure buttons don't get too small */
+    flex-shrink: 0; /* Don't let individual buttons shrink */
   }
 
-  .uil-draggabledots {
-    position: absolute;
-    right: 10px;
-    bottom: 10px;
+  .drag-handle {
+    margin-left: 8px; /* Reduce margin to save space */
+    padding: 6px; /* Reduce padding to save space */
+    flex-shrink: 0; /* Never shrink the drag handle */
+  }
+
+  .drag-handle img {
+    width: 32px; /* Keep large on mobile for easy touch */
+    height: 32px;
   }
 }
 
 @media (max-width: 480px) {
   .item .details {
-    flex-direction: column;
+    flex-direction: row; /* Keep horizontal on small screens */
     align-items: center;
-    text-align: center;
   }
 
   .item .details img {
-    margin-bottom: 6px;
+    margin-bottom: 0; /* Remove bottom margin */
+    margin-right: 12px; /* Keep right margin */
+  }
+
+  .actions-wrapper {
+    justify-content: space-between; /* Keep buttons left, drag handle right */
   }
 
   .col {
-    flex-direction: row;
-    gap: 4px;
-    justify-content: center;
-    width: 100%;
+    gap: 3px; /* Minimal gap for very small screens */
+    flex-wrap: nowrap; /* Never wrap */
   }
 
   .button {
+    padding: 4px; /* Smaller padding on very small screens */
+    min-width: 28px; /* Slightly smaller minimum on tiny screens */
+  }
+
+  .button img {
+    width: 16px; /* Slightly smaller icons on very small screens */
+    height: 16px;
+  }
+
+  .drag-handle {
+    margin-left: 4px; /* Minimal margin */
     padding: 4px;
   }
 
-  .uil-draggabledots {
-    display: none;
+  .drag-handle img {
+    width: 28px; /* Slightly smaller on very small screens but still usable */
+    height: 28px;
   }
 }
 </style>
