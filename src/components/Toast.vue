@@ -80,17 +80,12 @@ defineExpose({ show, remove })
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1.25rem;
-  background: linear-gradient(135deg, rgba(30, 30, 35, 0.98), rgba(20, 20, 25, 0.98));
-  border: 2px solid rgba(21, 205, 116, 0.6);
+  background: rgba(40, 40, 40, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
-  box-shadow: 
-    0 4px 20px rgba(0, 0, 0, 0.7),
-    0 0 40px rgba(21, 205, 116, 0.6),
-    0 0 20px rgba(21, 205, 116, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  color: #f5f5f5;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  color: #e0e0e0;
   font-size: 1.5rem;
-  font-weight: 500;
   pointer-events: auto;
   animation: slideUp 0.3s ease-out;
   backdrop-filter: blur(10px);
@@ -123,18 +118,12 @@ defineExpose({ show, remove })
   font-size: 1.4rem;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .toast-undo:hover {
   background: rgba(21, 205, 116, 0.15);
   border-color: #15cd74;
-}
-
-.toast-undo:active {
-  background: rgba(21, 205, 116, 0.25);
-  border-color: #15cd74;
-  transform: scale(0.95);
 }
 
 .toast-undo i {
