@@ -504,9 +504,10 @@ defineExpose({ verifyCredentialsForLoad, handleLoadAddonsFlow, canLoadAddons })
 </script>
 
 <template>
-  <legend>Step 0: Authenticate</legend>
+  <div>
+    <legend>Step 0: Authenticate</legend>
 
-  <div class="save-toggle" :class="{ 'is-enabled': savingEnabled }">
+    <div class="save-toggle" :class="{ 'is-enabled': savingEnabled }">
     <button
       type="button"
       class="save-toggle__button"

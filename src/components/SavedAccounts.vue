@@ -262,14 +262,14 @@ defineExpose({
       </select>
       <button
         type="button"
-        class="sam-button"
+        class="sam-button sam-button-edit"
         title="Rename saved login"
         @click="renameSelected"
       >
-        <i class="uil uil-edit"></i>
+        <img src="https://icongr.am/feather/edit.svg?size=12" alt="Edit">
       </button>
-      <button type="button" class="sam-button" title="Delete selected" @click="removeSelected">
-        <i class="uil uil-trash"></i>
+      <button type="button" class="sam-button sam-button-delete" title="Delete selected" @click="removeSelected">
+        <img src="https://icongr.am/feather/trash-2.svg?size=12" alt="Delete">
       </button>
     </div>
   </div>
@@ -281,30 +281,79 @@ defineExpose({
 .sam-select { flex:1; min-width:0; padding:.4rem; }
 
 .sam-button {
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:.35rem;
-  border:none;
-  background:transparent;
-  color:#aaa;
-  cursor:pointer;
-  border-radius:6px;
-  transition:color 0.2s, background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border: none;
+  background-color: #2c5f8d;
+  cursor: pointer;
+  border-radius: 6px;
+  min-width: 40px;
+  min-height: 40px;
+  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
 
 .sam-button:hover {
-  color:#e53935;              /* red hover */
-  background:rgba(229,57,53,0.1);
+  background-color: #234a6f;
 }
 
-.sam-button i {
-  font-size:20px;
-  line-height:1;
+.sam-button:active {
+  background-color: #1a3a56;
+  transform: scale(0.95);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.uil-trash {
-  font-size:20px;
-  line-height:1;
+.sam-button img {
+  width: 20px;
+  height: 20px;
 }
+
+/* Edit button - black icon */
+.sam-button-edit img {
+  filter: brightness(0);
+}
+
+/* Delete button - red icon */
+.sam-button-delete img {
+  filter: brightness(0) saturate(100%) invert(25%) sepia(85%) saturate(3500%) hue-rotate(345deg);
+}
+
+/* Dark mode styling */
+.dark .sam-button {
+  background-color: #3a6a96;
+}
+
+.dark .sam-button:hover {
+  background-color: #2d5478;
+}
+
+.dark .sam-button:active {
+  background-color: #234260;
+  transform: scale(0.95);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dark .sam-button-edit img {
+  filter: brightness(0);
+}
+
+.dark .sam-button-delete img {
+  filter: brightness(0) saturate(100%) invert(35%) sepia(85%) saturate(4000%) hue-rotate(345deg);
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .sam-button {
+    padding: 10px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  .sam-button img {
+    width: 22px;
+    height: 22px;
+  }
+}
+
 </style>

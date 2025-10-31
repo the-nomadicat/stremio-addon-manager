@@ -54,30 +54,34 @@
                 >
                     <template #item="{ element, index }">
                         <div class="catalog-item" :key="element.__dragKey">
-                            <span class="drag-handle" aria-label="Reorder catalog">
-                                <img src="https://icongr.am/feather/move.svg?size=16" alt="" aria-hidden="true" />
-                            </span>
-                            <span 
-                                v-if="catalogHasRequiredExtra(element)" 
-                                class="home-indicator" 
-                                :class="{ 'is-home': isCatalogOnHome(element) }"
-                                :title="isCatalogOnHome(element) ? 'Shown on Home page' : 'Discover only'"
-                                @click="toggleCatalogHomeStatus(element)"
-                            >
-                                <img src="https://icongr.am/feather/home.svg?size=16" alt="" aria-hidden="true" />
-                            </span>
-                            <label :for="'catalog-' + element.type" class="catalog-type-label">
-                                {{ element.type }}
-                            </label>
-                            <input
-                                :id="'catalog-' + element.type"
-                                type="text"
-                                v-model="element.name"
-                                placeholder="Catalog Name"
-                            />
-                            <button type="button" class="delete-button" @click="removeCatalog(index)">
-                                <img src="https://icongr.am/feather/trash-2.svg?size=16" alt="Delete Catalog" />
-                            </button>
+                            <div class="catalog-controls-left">
+                                <span class="drag-handle" aria-label="Reorder catalog">
+                                    <img src="https://icongr.am/feather/move.svg?size=16" alt="" aria-hidden="true" />
+                                </span>
+                                <span 
+                                    v-if="catalogHasRequiredExtra(element)" 
+                                    class="home-indicator" 
+                                    :class="{ 'is-home': isCatalogOnHome(element) }"
+                                    :title="isCatalogOnHome(element) ? 'Shown on Home page' : 'Discover only'"
+                                    @click="toggleCatalogHomeStatus(element)"
+                                >
+                                    <img src="https://icongr.am/feather/home.svg?size=16" alt="" aria-hidden="true" />
+                                </span>
+                                <label :for="'catalog-' + element.type" class="catalog-type-label">
+                                    {{ element.type }}
+                                </label>
+                            </div>
+                            <div class="catalog-controls-right">
+                                <input
+                                    :id="'catalog-' + element.type"
+                                    type="text"
+                                    v-model="element.name"
+                                    placeholder="Catalog Name"
+                                />
+                                <button type="button" class="delete-button" @click="removeCatalog(index)">
+                                    <img src="https://icongr.am/feather/trash-2.svg?size=16" alt="Delete Catalog" />
+                                </button>
+                            </div>
                         </div>
                     </template>
                 </Draggable>
@@ -86,6 +90,7 @@
             <div class="form-actions">
                 <button class="save-button" type="submit">Save</button>
                 <button type="button" class="switch-mode-button" @click="toggleEditMode">Advanced mode</button>
+                <button type="button" class="cancel-button" @click="handleCancel">Cancel</button>
             </div>
         </div>
         
@@ -94,8 +99,14 @@
             <div class="form-actions">
                 <button class="save-button" type="button" @click="updateFromJson">Save</button>
                 <button type="button" class="switch-mode-button" @click="toggleEditMode">Classic mode</button>
+                <button type="button" class="cancel-button" @click="handleCancel">Cancel</button>
             </div>
         </div>
+        
+        <!-- Teleport Toast to body but keep within single root element -->
+        <Teleport to="body">
+            <Toast ref="toastRef" />
+        </Teleport>
     </form>
 </template>
 
@@ -103,6 +114,7 @@
 import { ref, watch, defineEmits, onMounted, nextTick } from 'vue'
 import Draggable from 'vuedraggable'
 import { useDialog } from './DialogHost.vue'
+import Toast from './Toast.vue'
 
 const props = defineProps({
   manifest: {
@@ -111,7 +123,7 @@ const props = defineProps({
   }
 })
 
-const emits = defineEmits(['update-manifest'])
+const emits = defineEmits(['update-manifest', 'cancel'])
 
 const isAdvancedMode = ref(false);
 const formModel = ref({
@@ -122,13 +134,17 @@ const formModel = ref({
   catalogs: []
 });
 const jsonModel = ref('')
+const initialManifest = ref(null)
 const dialog = useDialog()
+const toastRef = ref(null)
 
 watch(() => props.manifest, (newManifest) => {
     const clone = JSON.parse(JSON.stringify(newManifest));
     ensureCatalogDragKeys(clone.catalogs);
     formModel.value = clone;
     syncJsonModel();
+    // Store the initial state when manifest is first loaded
+    initialManifest.value = JSON.parse(JSON.stringify(clone));
     nextTick(() => calculateMaxLabelWidth());
 }, { immediate: true });
 
@@ -173,6 +189,12 @@ function handleSubmit() {
     const sanitized = toSanitizedManifest(formModel.value);
     emits('update-manifest', sanitized);
     jsonModel.value = JSON.stringify(sanitized, null, 2);
+    
+    // Show success toast
+    toastRef.value?.show({
+        message: 'Manifest changes have been applied successfully.',
+        duration: 3000,
+    });
 }
 
 function removeCatalog(index) {
@@ -191,8 +213,14 @@ async function updateFromJson() {
         const sanitized = toSanitizedManifest(parsed);
         emits('update-manifest', sanitized);
         jsonModel.value = JSON.stringify(sanitized, null, 2);
-    isAdvancedMode.value = false;
+        isAdvancedMode.value = false;
         nextTick(() => calculateMaxLabelWidth());
+        
+        // Show success toast
+        toastRef.value?.show({
+            message: 'Manifest changes have been applied successfully.',
+            duration: 3000,
+        });
   } catch (e) {
         await dialog.alert({
                 title: 'Invalid JSON',
@@ -245,6 +273,40 @@ function isCatalogOnHome(catalog) {
     return !catalog.extra.some(e => e && e.isRequired === true);
 }
 
+async function handleCancel() {
+    // Compare current state with initial state
+    const currentSanitized = toSanitizedManifest(formModel.value);
+    const initialSanitized = toSanitizedManifest(initialManifest.value);
+    
+    const currentJson = JSON.stringify(currentSanitized);
+    const initialJson = JSON.stringify(initialSanitized);
+    
+    // If no changes were made, just close without confirmation
+    if (currentJson === initialJson) {
+        emits('cancel');
+        return;
+    }
+    
+    const confirmed = await dialog.confirm({
+        title: 'Cancel editing',
+        htmlMessage: 'Are you sure you want to cancel?<br><br>Any changes you made will be undone.',
+        confirmText: 'Yes, cancel',
+        cancelText: 'Keep editing',
+    });
+    
+    if (confirmed) {
+        // Restore the initial state
+        if (initialManifest.value) {
+            const restored = JSON.parse(JSON.stringify(initialManifest.value));
+            ensureCatalogDragKeys(restored.catalogs);
+            formModel.value = restored;
+            syncJsonModel();
+            nextTick(() => calculateMaxLabelWidth());
+        }
+        emits('cancel');
+    }
+}
+
 function toggleCatalogHomeStatus(catalog) {
     if (!Array.isArray(catalog.extra)) return;
     
@@ -279,7 +341,7 @@ function toggleCatalogHomeStatus(catalog) {
     font-size: 16px;
     cursor: pointer;
     border-radius: 5px;
-    transition: background-color 0.3s, transform 0.2s;
+    transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.15s ease;
     margin-right: 10px;
 }
 
@@ -288,14 +350,16 @@ function toggleCatalogHomeStatus(catalog) {
 }
 
 .save-button:active {
-    background-color: #14854eea;
-    transform: scale(0.98);
+    background-color: #106e41;
+    transform: scale(0.96);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .save-button:disabled {
     background-color: #6c757d;
     cursor: not-allowed;
     opacity: 0.6;
+    transform: none;
 }
 
 .switch-mode-button {
@@ -306,7 +370,7 @@ function toggleCatalogHomeStatus(catalog) {
     font-size: 16px;
     cursor: pointer;
     border-radius: 5px;
-    transition: background-color 0.3s, transform 0.2s;
+    transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
 
 .switch-mode-button:hover {
@@ -315,13 +379,43 @@ function toggleCatalogHomeStatus(catalog) {
 
 .switch-mode-button:active {
     background-color: #004494;
-    transform: scale(0.98);
+    transform: scale(0.96);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
 .switch-mode-button:disabled {
     background-color: #6c757d;
     cursor: not-allowed;
     opacity: 0.6;
+    transform: none;
+}
+
+.cancel-button {
+    padding: 10px 20px;
+    border: none;
+    background-color: #6c757d;
+    color: #ffffff;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.cancel-button:hover {
+    background-color: #5a6268;
+}
+
+.cancel-button:active {
+    background-color: #4e545a;
+    transform: scale(0.96);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.cancel-button:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
 }
 
 .delete-button {
@@ -332,7 +426,7 @@ function toggleCatalogHomeStatus(catalog) {
     font-size: 16px;
     cursor: pointer;
     border-radius: 5px;
-    transition: background-color 0.3s, transform 0.2s;
+    transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.15s ease;
 }
 
 .delete-button:hover {
@@ -340,14 +434,16 @@ function toggleCatalogHomeStatus(catalog) {
 }
 
 .delete-button:active {
-    background-color: #ff273de7;
-    transform: scale(0.98);
+    background-color: #8a0311;
+    transform: scale(0.96);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 
 .delete-button:disabled {
     background-color: #f5f5f5;
     cursor: not-allowed;
     opacity: 0.6;
+    transform: none;
 }
 
 .delete-button img {
@@ -360,6 +456,7 @@ form {
     height: 100%;
     overflow-y: auto;
     padding: 0;
+    touch-action: pan-y; /* Allow vertical scrolling in the form */
 }
 
 .form-group {
@@ -375,6 +472,7 @@ input, textarea {
     width: 100%;
     padding: 10px;
     box-sizing: border-box;
+    touch-action: manipulation; /* Prevent double-tap zoom on input fields */
 }
 
 textarea {
@@ -387,16 +485,47 @@ textarea {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    touch-action: pan-y; /* Allow vertical scrolling but control horizontal during drag */
 }
 
 .catalog-ghost {
     opacity: 0.4;
+    touch-action: none; /* Disable scrolling when dragging */
 }
 
 .catalog-item {
     display: flex;
     align-items: center;
     gap: 10px;
+    touch-action: manipulation; /* Prevent double-tap zoom, allow single taps */
+    flex-wrap: wrap;
+}
+
+.catalog-controls-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0; /* Don't shrink this group */
+}
+
+.catalog-controls-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-width: 0; /* Allow shrinking */
+}
+
+/* Allow wrapping when screen is too narrow for all controls + 250px input */
+@media (max-width: 600px) {
+    .catalog-item {
+        flex-wrap: wrap;
+    }
+    
+    .catalog-controls-right {
+        flex: 1 1 100%;
+        min-width: 200px;
+    }
 }
 
 .drag-handle {
@@ -410,6 +539,8 @@ textarea {
     border-radius: 6px;
     padding: 0;
     flex-shrink: 0;
+    touch-action: none; /* Disable all touch scrolling for drag handles */
+    transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 .drag-handle:hover {
@@ -418,6 +549,9 @@ textarea {
 
 .drag-handle:active {
     cursor: grabbing;
+    touch-action: none; /* Keep scrolling disabled while actively dragging */
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.05);
 }
 
 .drag-handle img {
@@ -437,11 +571,16 @@ textarea {
     border-radius: 6px;
     padding: 0;
     flex-shrink: 0;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
 .home-indicator:hover {
     background: rgba(255, 255, 255, 0.08);
+}
+
+.home-indicator:active {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(0.95);
 }
 
 .home-indicator img {
@@ -463,11 +602,11 @@ textarea {
     white-space: nowrap;
 }
 
-.catalog-item input {
-    flex: 1;
+.catalog-controls-right input {
+    flex: 1 1 250px;
     margin-right: 10px;
     box-sizing: border-box;
-    min-width: 150px;
+    min-width: 250px;
 }
 
 .json-editor {
@@ -482,28 +621,50 @@ textarea {
 }
 
 @media (max-width: 768px) {
-    .catalog-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.75rem;
+    /* Optimize spacing for mobile */
+    .form-group {
+        margin-bottom: 12px;
     }
-
-    .drag-handle {
-        align-self: flex-end;
+    
+    label {
+        margin-bottom: 4px;
+        font-size: 14px;
     }
-
-    .catalog-type-label {
-        margin-right: 0;
-        margin-bottom: 5px;
-        text-align: left;
-        width: 100%;
-        max-width: 150px;
-        box-sizing: border-box;
+    
+    input, textarea {
+        padding: 8px;
+        font-size: 14px;
     }
+    
+    .form-actions {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .form-actions button {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+    
+    .json-editor {
+        margin-bottom: 12px;
+        font-size: 13px;
+    }
+}
 
-    .catalog-item input {
-        margin-right: 0;
+@media (max-width: 480px) {
+    /* Further optimize for very small screens */
+    .form-group {
         margin-bottom: 10px;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions button {
         width: 100%;
     }
 }
