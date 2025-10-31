@@ -439,6 +439,7 @@ function clearAddons() {
             <fieldset id="form_step2">
                 <legend>Step 2: Edit/Re-Order Addons & Catalogs</legend>
                 <draggable v-if="addons.length" :list="addons" item-key="transportUrl" class="sortable-list" ghost-class="ghost"
+                    handle=".drag-handle"
                     @start="dragging = true" @end="dragging = false">
                     <template #item="{ element, index }">
                         <AddonItem :name="element.manifest.name" :idx="index" :manifestURL="element.transportUrl"
