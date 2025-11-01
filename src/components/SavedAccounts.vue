@@ -264,11 +264,14 @@ defineExpose({
         type="button"
         class="sam-button sam-button-edit"
         title="Rename saved login"
+        :disabled="selectedEmail === DEFAULT_EMAIL"
         @click="renameSelected"
       >
         <img src="https://icongr.am/feather/edit.svg?size=12" alt="Edit">
       </button>
-      <button type="button" class="sam-button sam-button-delete" title="Delete selected" @click="removeSelected">
+      <button type="button" class="sam-button sam-button-delete" title="Delete selected" 
+        :disabled="selectedEmail === DEFAULT_EMAIL"
+        @click="removeSelected">
         <img src="https://icongr.am/feather/trash-2.svg?size=12" alt="Delete">
       </button>
     </div>
@@ -304,6 +307,13 @@ defineExpose({
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
+.sam-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+}
+
 .sam-button img {
   width: 20px;
   height: 20px;
@@ -332,6 +342,11 @@ defineExpose({
   background-color: #234260;
   transform: scale(0.95);
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.dark .sam-button:disabled {
+  background-color: #555555;
+  opacity: 0.4;
 }
 
 .dark .sam-button-edit img {
