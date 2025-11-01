@@ -476,8 +476,16 @@ function clearAddons() {
 
     <div v-if="isEditModalVisible" class="modal">
         <div class="modal-content">
-            <h3>Edit manifest</h3>
-            <DynamicForm :manifest="currentManifest" @update-manifest="saveManifestEdit" @cancel="closeEditModal" />
+            <div class="modal-header">
+                <h3>Edit manifest</h3>
+            </div>
+            <div class="modal-body">
+                <DynamicForm 
+                    :manifest="currentManifest" 
+                    @update-manifest="saveManifestEdit" 
+                    @cancel="closeEditModal"
+                />
+            </div>
         </div>
     </div>
 </template>
@@ -555,8 +563,9 @@ function clearAddons() {
     color: #e0e0e0; 
     width: 75vw;
     max-width: 900px;
+    height: 90vh;
     max-height: 90vh;
-    padding: 20px;
+    padding: 0;
     border-radius: 5px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.7);
     overflow: hidden;
@@ -564,14 +573,39 @@ function clearAddons() {
     flex-direction: column;
 }
 
+.modal-header {
+    padding: 20px 20px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+}
+
+.modal-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    min-height: 0;
+}
+
 /* Tablet and smaller screens - maximize screen usage */
 @media (max-width: 1024px) {
     .modal-content {
         width: 95vw;
         max-width: none;
+        height: 95vh;
         max-height: 95vh;
-        padding: 15px;
         border-radius: 8px;
+    }
+    
+    .modal-header {
+        padding: 15px 15px 12px;
+    }
+    
+    .modal-body {
+        padding: 15px;
     }
 }
 
@@ -586,9 +620,16 @@ function clearAddons() {
         width: 100%;
         height: 100%;
         max-height: none;
-        padding: 12px;
         border-radius: 0;
         margin: 0;
+    }
+    
+    .modal-header {
+        padding: 12px;
+    }
+    
+    .modal-body {
+        padding: 12px;
     }
 }
 

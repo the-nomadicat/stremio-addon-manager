@@ -94,8 +94,8 @@
             </div>
         </div>
         
-        <div v-else>
-            <textarea v-model="jsonModel" rows="10" class="json-editor"></textarea>
+        <div v-else class="advanced-mode-container">
+            <textarea v-model="jsonModel" class="json-editor"></textarea>
             <div class="form-actions">
                 <button class="save-button" type="button" @click="updateFromJson">Save</button>
                 <button type="button" class="switch-mode-button" @click="toggleEditMode">Classic mode</button>
@@ -453,9 +453,9 @@ function toggleCatalogHomeStatus(catalog) {
 form {
     display: flex;
     flex-direction: column;
-    height: 100%;
-    overflow-y: auto;
     padding: 0;
+    height: 100%;
+    min-height: 0;
     touch-action: pan-y; /* Allow vertical scrolling in the form */
 }
 
@@ -479,6 +479,26 @@ textarea {
     resize: vertical;
     background-color: #131316;
     color: #f5f5f5;
+}
+
+.advanced-mode-container {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+}
+
+.json-editor {
+    flex: 1;
+    min-height: 0;
+    height: 100%;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 15px;
+    box-sizing: border-box;
+    resize: none;
 }
 
 .catalog-list {
@@ -614,15 +634,17 @@ textarea {
     min-width: 250px;
 }
 
-.json-editor {
-    padding: 10px;
-    box-sizing: border-box;
-    margin-bottom: 20px;
-}
-
 .form-actions {
     display: flex;
     gap: 10px;
+    margin-top: 20px;
+    padding: 20px;
+    margin: 0 -20px -20px -20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    background: linear-gradient(to top, #2e2e2e 0%, #2e2e2e 70%, rgba(46, 46, 46, 0.95) 100%);
+    position: sticky;
+    bottom: -20px;
+    z-index: 10;
 }
 
 @media (max-width: 768px) {
@@ -644,6 +666,9 @@ textarea {
     .form-actions {
         flex-wrap: wrap;
         gap: 8px;
+        margin: 0 -12px -12px -12px;
+        padding: 12px;
+        bottom: -12px;
     }
     
     .form-actions button {
@@ -654,8 +679,8 @@ textarea {
     }
     
     .json-editor {
-        margin-bottom: 12px;
         font-size: 13px;
+        padding: 12px;
     }
 }
 
