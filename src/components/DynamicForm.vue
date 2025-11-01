@@ -56,7 +56,7 @@
                         <div class="catalog-item" :key="element.__dragKey">
                             <div class="catalog-controls-left">
                                 <span class="drag-handle" aria-label="Reorder catalog">
-                                    <img src="https://icongr.am/feather/move.svg?size=16" alt="" aria-hidden="true" />
+                                    <img src="https://icongr.am/feather/move.svg?size=24" alt="" aria-hidden="true" />
                                 </span>
                                 <span 
                                     v-if="catalogHasRequiredExtra(element)" 
@@ -65,7 +65,7 @@
                                     :title="isCatalogOnHome(element) ? 'Shown on Home page' : 'Discover only'"
                                     @click="toggleCatalogHomeStatus(element)"
                                 >
-                                    <img src="https://icongr.am/feather/home.svg?size=16" alt="" aria-hidden="true" />
+                                    <img src="https://icongr.am/feather/home.svg?size=24" alt="" aria-hidden="true" />
                                 </span>
                                 <label :for="'catalog-' + element.type" class="catalog-type-label">
                                     {{ element.type }}
@@ -496,22 +496,27 @@ textarea {
 .catalog-item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    margin-top: 10px;
     touch-action: manipulation; /* Prevent double-tap zoom, allow single taps */
     flex-wrap: wrap;
+    gap: 8px; /* Tighter gap between left and right groups */
+    padding: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .catalog-controls-left {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px; /* Tighter spacing within left group */
     flex-shrink: 0; /* Don't shrink this group */
 }
 
 .catalog-controls-right {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px; /* Tighter spacing within right group */
     flex: 1 1 auto;
     min-width: 0; /* Allow shrinking */
 }
