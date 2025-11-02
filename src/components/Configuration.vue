@@ -390,6 +390,81 @@ function clearAddons() {
     if (addons.value.length === 0) return;
     resetAddons();
 }
+
+async function installAddon() {
+    const manifestURL = await dialog.prompt({
+        title: 'Add Addon to List',
+        htmlMessage: 'Enter the addon manifest URL:<br><br><small><strong>Note:</strong> This will add the addon to your list. You must click "Sync to Stremio" afterwards to install it to your account.</small>',
+        placeholder: 'https://example.com/manifest.json',
+        confirmText: 'Add to List',
+        cancelText: 'Cancel',
+    });
+    
+    if (!manifestURL) return; // User cancelled
+    
+    const trimmedURL = manifestURL.trim();
+    if (!trimmedURL) return;
+    
+    // Validate URL format
+    try {
+        new URL(trimmedURL);
+    } catch (e) {
+        await dialog.alert({
+            title: 'Invalid URL',
+            htmlMessage: 'Please enter a valid manifest URL.',
+            confirmText: 'OK',
+        });
+        return;
+    }
+    
+    // Check if addon already exists
+    const exists = addons.value.some(addon => addon.transportUrl === trimmedURL);
+    if (exists) {
+        await dialog.alert({
+            title: 'Addon Already in List',
+            htmlMessage: 'This addon is already in your list.',
+            confirmText: 'OK',
+        });
+        return;
+    }
+    
+    // Fetch and validate manifest
+    try {
+        const response = await fetch(trimmedURL);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const manifest = await response.json();
+        
+        // Validate manifest has required fields
+        if (!manifest.id || !manifest.name || !manifest.version) {
+            throw new Error('Invalid manifest: missing required fields (id, name, or version)');
+        }
+        
+        // Add the addon to the list
+        addons.value.push({
+            transportUrl: trimmedURL,
+            manifest: manifest,
+            flags: {}
+        });
+        
+        // Show success message with clear instruction to sync
+        await dialog.alert({
+            title: 'Addon Added to List',
+            htmlMessage: `<strong>"${manifest.name}"</strong> has been added to your addon list.<br><br>⚠️ <strong>Important:</strong> Click <strong>"Sync to Stremio"</strong> to install this addon to your account.`,
+            confirmText: 'OK',
+        });
+        
+    } catch (error) {
+        console.error('Failed to add addon:', error);
+        await dialog.alert({
+            title: 'Failed to Add Addon',
+            htmlMessage: `Could not install addon: ${error.message}`,
+            confirmText: 'OK',
+        });
+    }
+}
 </script>
 
 <template>
@@ -461,6 +536,11 @@ function clearAddons() {
                         <button type="button" class="button primary icon" @click="syncUserAddons">
                             Sync to Stremio
                             <img src="https://icongr.am/feather/loader.svg?size=16&amp;color=ffffff" alt="icon">
+                        </button>
+                    </div>
+                    <div class="right-actions">
+                        <button type="button" class="button install" @click="installAddon">
+                            Add Addon...
                         </button>
                     </div>
                 </div>
@@ -681,6 +761,25 @@ button:disabled {
 }
 
 .button.primary:disabled {
+    background-color: #6c757d;
+    opacity: 0.6;
+}
+
+.button.install {
+    background-color: #007bff;
+}
+
+.button.install:hover {
+    background-color: #0056b3;
+}
+
+.button.install:active {
+    background-color: #004494;
+    transform: scale(0.98);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.button.install:disabled {
     background-color: #6c757d;
     opacity: 0.6;
 }
