@@ -24,11 +24,35 @@ let currentEditIdx = ref(null);
 // current email coming from Authentication.vue
 const currentEmail = ref('')
 
+// Track when changes need to be synced
+const needsSync = ref(false)
+// Store the original state of addons when loaded/synced
+const originalAddons = ref(null)
+
 /* ===============================
    STEP 4: BACKUP & RESTORE
    (only save/restore addons)
 ================================ */
 const restoreInput = ref(null)
+
+// Function to compare current addons with original state
+function checkIfModified() {
+    if (!originalAddons.value) {
+        needsSync.value = false
+        return
+    }
+    
+    // Deep comparison of addons array
+    const current = JSON.stringify(addons.value)
+    const original = JSON.stringify(originalAddons.value)
+    needsSync.value = current !== original
+}
+
+function saveOriginalState() {
+    // Deep copy the current addon state
+    originalAddons.value = JSON.parse(JSON.stringify(addons.value))
+    needsSync.value = false
+}
 
 function safeForFilename(s) {
   return (s || '')
@@ -263,6 +287,8 @@ async function loadUserAddons() {
         }
 
         addons.value = data.result.addons
+        // Save the original state and clear sync flag
+        saveOriginalState()
     } catch (error) {
         console.error('Error fetching user addons', error)
         await dialog.alert({
@@ -315,6 +341,8 @@ async function syncUserAddons() {
             })
         } else {
             console.log('Sync complete: ', data)
+            // Save the new synced state as the original state
+            saveOriginalState()
             await dialog.alert({
                 title: 'Sync complete',
                 htmlMessage: 'Your addon list has been uploaded to Stremio.',
@@ -333,6 +361,7 @@ async function syncUserAddons() {
 
 function removeAddon(idx) {
     addons.value.splice(idx, 1)
+    checkIfModified()
 }
 
 function handleToast({ message, duration }) {
@@ -372,6 +401,7 @@ function closeEditModal() {
 async function saveManifestEdit(updatedManifest) {
     try {
         addons.value[currentEditIdx.value].manifest = updatedManifest;
+        checkIfModified()
         closeEditModal();
     } catch (e) {
         await dialog.alert({
@@ -389,6 +419,10 @@ function resetAddons() {
 function clearAddons() {
     if (addons.value.length === 0) return;
     resetAddons();
+}
+
+function handleDragEnd() {
+    checkIfModified()
 }
 
 async function installAddon() {
@@ -448,6 +482,9 @@ async function installAddon() {
             manifest: manifest,
             flags: {}
         });
+        
+        // Check if state has changed from original
+        checkIfModified()
         
         // Show success message with clear instruction to sync
         await dialog.alert({
@@ -515,7 +552,7 @@ async function installAddon() {
                 <legend>Step 2: Edit/Re-Order Addons & Catalogs</legend>
                 <draggable v-if="addons.length" :list="addons" item-key="transportUrl" class="sortable-list" ghost-class="ghost"
                     handle=".drag-handle"
-                    @start="dragging = true" @end="dragging = false">
+                    @start="dragging = true" @end="handleDragEnd">
                     <template #item="{ element, index }">
                         <AddonItem :name="element.manifest.name" :idx="index" :manifestURL="element.transportUrl"
                             :logoURL="element.manifest.logo"
@@ -533,7 +570,7 @@ async function installAddon() {
                 <legend>Step 3: Sync Addons</legend>
                 <div v-if="addons.length" class="action-row">
                     <div class="left-actions">
-                        <button type="button" class="button primary icon" @click="syncUserAddons">
+                        <button type="button" class="button primary large icon" :class="{ 'pulse': needsSync }" :disabled="!needsSync" @click="syncUserAddons">
                             Sync to Stremio
                             <img src="https://icongr.am/feather/loader.svg?size=16&amp;color=ffffff" alt="icon">
                         </button>
@@ -765,6 +802,33 @@ button:disabled {
     opacity: 0.6;
 }
 
+.button.primary.large {
+    padding: 13px 26px;
+    font-size: 17px;
+    font-weight: 600;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 20px 5px rgba(20, 133, 79, 0.8),
+                    0 0 40px 10px rgba(20, 133, 79, 0.4);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 30px 10px rgba(20, 133, 79, 0.9),
+                    0 0 60px 20px rgba(20, 133, 79, 0.5),
+                    0 0 80px 30px rgba(20, 133, 79, 0.3);
+        transform: scale(1.05);
+        background-color: #16a05f;
+    }
+}
+
+.button.primary.pulse {
+    animation: pulse 0.6s ease-in-out 1;
+    position: relative;
+    z-index: 1;
+}
+
 .button.install {
     background-color: #007bff;
 }
@@ -809,6 +873,11 @@ button:disabled {
         margin: 0;
         box-sizing: border-box;
     }
+    
+    .button.primary.large {
+        padding: 14px 16px;
+        font-size: 16px;
+    }
 }
 
 @media (max-width: 480px) {
@@ -821,6 +890,11 @@ button:disabled {
     .right-actions button {
         font-size: 14px;
         padding: 10px 14px;
+    }
+    
+    .button.primary.large {
+        padding: 12px 14px;
+        font-size: 15px;
     }
 }
 </style>
