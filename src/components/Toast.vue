@@ -65,7 +65,7 @@ defineExpose({ show, remove })
 <style scoped>
 .toast-container {
   position: fixed;
-  bottom: 2rem;
+  top: 2rem;
   left: 50%;
   transform: translateX(-50%);
   z-index: 9999;
@@ -81,9 +81,12 @@ defineExpose({ show, remove })
   gap: 1rem;
   padding: 0.75rem 1.25rem;
   background: rgba(40, 40, 40, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(21, 205, 116, 0.8);
   border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5),
+              0 0 30px rgba(21, 205, 116, 0.7),
+              0 0 60px rgba(21, 205, 116, 0.5),
+              0 0 90px rgba(21, 205, 116, 0.3);
   color: #e0e0e0;
   font-size: 1.5rem;
   pointer-events: auto;
@@ -94,7 +97,7 @@ defineExpose({ show, remove })
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(-20px);
   }
   to {
     opacity: 1;

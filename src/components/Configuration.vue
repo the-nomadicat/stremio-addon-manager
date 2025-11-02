@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import draggable from 'vuedraggable'
 import AddonItem from './AddonItem.vue'
 import Authentication from './Authentication.vue'
@@ -11,7 +11,8 @@ const stremioAPIBase = "https://api.strem.io/api/"
 const dragging = false
 let stremioAuthKey = ref('');
 let addons = ref([])
-let loadAddonsButtonText = ref('Load Addons')
+let isLoadingAddons = ref(false)
+let hasLoadedAddons = ref(false)
 
 const authRef = ref(null)
 const dialog = useDialog()
@@ -28,6 +29,19 @@ const currentEmail = ref('')
 const needsSync = ref(false)
 // Store the original state of addons when loaded/synced
 const originalAddons = ref(null)
+
+// Track whether controls should be fixed or static
+const controlsFixed = ref(true)
+const controlsRef = ref(null)
+
+// Computed property for button text
+const loadAddonsButtonText = computed(() => {
+    if (isLoadingAddons.value) {
+        return hasLoadedAddons.value ? 'Reloading...' : 'Loading...'
+    }
+    if (hasLoadedAddons.value) return 'Reload Addons'
+    return 'Load Addons'
+})
 
 /* ===============================
    STEP 4: BACKUP & RESTORE
@@ -53,6 +67,47 @@ function saveOriginalState() {
     originalAddons.value = JSON.parse(JSON.stringify(addons.value))
     needsSync.value = false
 }
+
+// Handle scroll to toggle between fixed and static positioning
+function handleScroll() {
+    if (!controlsRef.value) return
+    
+    const controlsElement = controlsRef.value
+    const parent = controlsElement.parentElement // The fieldset (Step 3)
+    
+    if (!parent) return
+    
+    // Get Step 2 element to check if we've scrolled above the addon list
+    const step2Element = document.getElementById('form_step2')
+    
+    const parentRect = parent.getBoundingClientRect()
+    const step2Rect = step2Element?.getBoundingClientRect()
+    const viewportHeight = window.innerHeight
+    
+    // Check if Step 2 is actually visible in the viewport
+    // Step 2 is visible if its top is above viewport bottom AND its bottom is below viewport top
+    const step2Visible = step2Rect && step2Rect.top < viewportHeight && step2Rect.bottom > 0
+    
+    // If Step 2 is completely scrolled off (either above or below viewport), hide sticky controls
+    if (!step2Visible) {
+        controlsFixed.value = false
+        return
+    }
+    
+    // If parent's bottom is visible, controls are at their natural position (static)
+    // Otherwise, make them fixed to the bottom of the viewport
+    controlsFixed.value = parentRect.bottom > viewportHeight
+}
+
+onMounted(() => {
+    window.addEventListener('scroll', handleScroll)
+    // Initial check
+    handleScroll()
+})
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', handleScroll)
+})
 
 function safeForFilename(s) {
   return (s || '')
@@ -260,7 +315,7 @@ async function loadUserAddons() {
         return
     }
 
-    loadAddonsButtonText.value = 'Loading...'
+    isLoadingAddons.value = true
 
     const url = `${stremioAPIBase}addonCollectionGet`
 
@@ -287,6 +342,7 @@ async function loadUserAddons() {
         }
 
         addons.value = data.result.addons
+        hasLoadedAddons.value = true
         // Save the original state and clear sync flag
         saveOriginalState()
     } catch (error) {
@@ -297,7 +353,7 @@ async function loadUserAddons() {
             confirmText: 'Dismiss',
         })
     } finally {
-        loadAddonsButtonText.value = 'Load Addons'
+        isLoadingAddons.value = false
     }
 }
 
@@ -414,6 +470,7 @@ async function saveManifestEdit(updatedManifest) {
 
 function resetAddons() {
     addons.value = [];
+    hasLoadedAddons.value = false
 }
 
 function clearAddons() {
@@ -486,12 +543,11 @@ async function installAddon() {
         // Check if state has changed from original
         checkIfModified()
         
-        // Show success message with clear instruction to sync
-        await dialog.alert({
-            title: 'Addon Added to List',
-            htmlMessage: `<strong>"${manifest.name}"</strong> has been added to your addon list.<br><br>⚠️ <strong>Important:</strong> Click <strong>"Sync to Stremio"</strong> to install this addon to your account.`,
-            confirmText: 'OK',
-        });
+        // Show simple success message
+        toastRef.value?.show({
+            message: `Added "${manifest.name}" to your addon list`,
+            duration: 3000,
+        })
         
     } catch (error) {
         console.error('Failed to add addon:', error);
@@ -568,7 +624,7 @@ async function installAddon() {
 
             <fieldset id="form_step3">
                 <legend>Step 3: Sync Addons</legend>
-                <div v-if="addons.length" class="action-row">
+                <div v-if="addons.length" ref="controlsRef" class="action-row sticky-controls" :class="{ 'controls-fixed': controlsFixed }">
                     <div class="left-actions">
                         <button type="button" class="button primary large icon" :class="{ 'pulse': needsSync }" :disabled="!needsSync" @click="syncUserAddons">
                             Sync to Stremio
@@ -645,6 +701,29 @@ async function installAddon() {
     align-items: center;
     gap: 0.5rem;
     flex-wrap: wrap;
+}
+
+#form_step3 {
+    position: relative;
+    min-height: 114px;
+}
+
+.sticky-controls {
+    background: linear-gradient(to top, #1a1a1a 0%, #1a1a1a 85%, rgba(26, 26, 26, 0.95) 100%);
+    padding: 20px 25px;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+    box-sizing: border-box;
+    transition: none;
+}
+
+.sticky-controls.controls-fixed {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 91px) !important;
+    max-width: 654px;
+    z-index: 100;
 }
 
 .button.danger {
@@ -850,10 +929,20 @@ button:disabled {
 
 /* Mobile responsive styles for buttons and action rows */
 @media (max-width: 768px) {
+    #form_step3 {
+        min-height: 152px;
+    }
+    
     .action-row {
         flex-direction: column;
         gap: 0.75rem;
         align-items: stretch;
+    }
+    
+    .sticky-controls {
+        padding: 15px 25px;
+        width: 100%; /* Use full width on mobile */
+        max-width: 100%;
     }
     
     .left-actions,
@@ -880,7 +969,23 @@ button:disabled {
     }
 }
 
+@media (max-width: 600px) {
+    .sticky-controls.controls-fixed {
+        width: calc(100% - 66px) !important;
+    }
+}
+
 @media (max-width: 480px) {
+    #form_step3 {
+        min-height: 137px;
+    }
+    
+    .sticky-controls {
+        padding: 12px 25px;
+        width: 100%;
+        max-width: 100%;
+    }
+    
     button {
         font-size: 14px;
         padding: 10px 14px;
