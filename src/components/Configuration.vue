@@ -239,6 +239,9 @@ function restoreFromFile(e) {
         const addonCount = data.addons.length
         addons.value = data.addons
         
+        // Check if restored state differs from original (enable Sync button)
+        checkIfModified()
+        
         toastRef.value?.show({
           message: `Successfully restored ${addonCount} addon${addonCount !== 1 ? 's' : ''}`,
           duration: 3000,
@@ -472,6 +475,10 @@ async function saveManifestEdit(updatedManifest) {
 function resetAddons() {
     addons.value = [];
     hasLoadedAddons.value = false
+    // When resetting addons (e.g., switching accounts), clear the original state too
+    // so the sync button is disabled (nothing to sync)
+    originalAddons.value = null
+    needsSync.value = false
 }
 
 function clearAddons() {
