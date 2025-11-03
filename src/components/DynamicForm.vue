@@ -58,12 +58,15 @@
                                 <span class="drag-handle" aria-label="Reorder catalog">
                                     <img src="https://icongr.am/feather/move.svg?size=24" alt="" aria-hidden="true" />
                                 </span>
+                                <!-- Always render home indicator to maintain alignment, but hide if not applicable -->
                                 <span 
-                                    v-if="catalogHasRequiredExtra(element)" 
                                     class="home-indicator" 
-                                    :class="{ 'is-home': isCatalogOnHome(element) }"
-                                    :title="isCatalogOnHome(element) ? 'Shown on Home page' : 'Discover only'"
-                                    @click="toggleCatalogHomeStatus(element)"
+                                    :class="{ 
+                                        'is-home': catalogHasRequiredExtra(element) && isCatalogOnHome(element),
+                                        'home-hidden': !catalogHasRequiredExtra(element)
+                                    }"
+                                    :title="catalogHasRequiredExtra(element) ? (isCatalogOnHome(element) ? 'Shown on Home page' : 'Discover only') : ''"
+                                    @click="catalogHasRequiredExtra(element) ? toggleCatalogHomeStatus(element) : null"
                                 >
                                     <img src="https://icongr.am/feather/home.svg?size=24" alt="" aria-hidden="true" />
                                 </span>
@@ -88,18 +91,32 @@
             </div>
     
             <div class="form-actions">
-                <button class="save-button" type="submit">Save</button>
-                <button type="button" class="switch-mode-button" @click="toggleEditMode">Advanced mode</button>
-                <button type="button" class="cancel-button" @click="handleCancel">Cancel</button>
+                <div class="form-actions-left">
+                    <button class="save-button" type="submit">Save</button>
+                    <button type="button" class="switch-mode-button" @click="toggleEditMode">Advanced mode</button>
+                    <button type="button" class="cancel-button" @click="handleCancel">Cancel</button>
+                </div>
+                <div class="form-actions-right">
+                    <button type="button" class="reset-button" @click="handleReset" :disabled="isResetting" :title="isResetting ? 'Fetching manifest...' : 'Fetch and apply the latest manifest from the addon developer'">
+                        {{ isResetting ? 'Resetting...' : 'Reset Addon' }}
+                    </button>
+                </div>
             </div>
         </div>
         
         <div v-else class="advanced-mode-container">
             <textarea v-model="jsonModel" class="json-editor"></textarea>
             <div class="form-actions">
-                <button class="save-button" type="button" @click="updateFromJson">Save</button>
-                <button type="button" class="switch-mode-button" @click="toggleEditMode">Classic mode</button>
-                <button type="button" class="cancel-button" @click="handleCancel">Cancel</button>
+                <div class="form-actions-left">
+                    <button class="save-button" type="button" @click="updateFromJson">Save</button>
+                    <button type="button" class="switch-mode-button" @click="toggleEditMode">Classic mode</button>
+                    <button type="button" class="cancel-button" @click="handleCancel">Cancel</button>
+                </div>
+                <div class="form-actions-right">
+                    <button type="button" class="reset-button" @click="handleReset" :disabled="isResetting" :title="isResetting ? 'Fetching manifest...' : 'Fetch and apply the latest manifest from the addon developer'">
+                        {{ isResetting ? 'Resetting...' : 'Reset Addon' }}
+                    </button>
+                </div>
             </div>
         </div>
         
@@ -120,6 +137,11 @@ const props = defineProps({
   manifest: {
     type: Object,
     required: true
+  },
+  manifestURL: {
+    type: String,
+    required: false,
+    default: ''
   }
 })
 
@@ -135,6 +157,7 @@ const formModel = ref({
 });
 const jsonModel = ref('')
 const initialManifest = ref(null)
+const isResetting = ref(false)
 const dialog = useDialog()
 const toastRef = ref(null)
 
@@ -145,7 +168,9 @@ watch(() => props.manifest, (newManifest) => {
     syncJsonModel();
     // Store the initial state when manifest is first loaded
     initialManifest.value = JSON.parse(JSON.stringify(clone));
-    nextTick(() => calculateMaxLabelWidth());
+    nextTick(() => {
+        calculateMaxLabelWidth();
+    });
 }, { immediate: true });
 
 onMounted(() => {
@@ -214,7 +239,9 @@ async function updateFromJson() {
         emits('update-manifest', sanitized);
         jsonModel.value = JSON.stringify(sanitized, null, 2);
         isAdvancedMode.value = false;
-        nextTick(() => calculateMaxLabelWidth());
+        nextTick(() => {
+            calculateMaxLabelWidth();
+        });
         
         // Show success toast
         toastRef.value?.show({
@@ -330,6 +357,130 @@ function toggleCatalogHomeStatus(catalog) {
         syncJsonModel();
     }
 }
+
+async function handleReset() {
+    if (!props.manifestURL) {
+        await dialog.alert({
+            title: 'Cannot reset',
+            htmlMessage: 'No manifest URL available for this addon.',
+            confirmText: 'OK',
+        });
+        return;
+    }
+    
+    const confirmed = await dialog.confirm({
+        title: 'Reset addon?',
+        htmlMessage: '⚠️ <strong>Warning:</strong> This will fetch and apply the latest manifest from the addon developer.<br><br>Any customizations you\'ve made (renamed catalogs, reordering, etc.) will be lost.',
+        confirmText: 'Yes, reset addon',
+        cancelText: 'Cancel',
+    });
+    
+    if (!confirmed) return;
+    
+    isResetting.value = true;
+    
+    try {
+        // Convert stremio:// URLs to https://
+        let fetchURL = props.manifestURL;
+        if (fetchURL.startsWith('stremio://')) {
+            fetchURL = fetchURL.replace('stremio://', 'https://');
+        }
+        
+        // Create abort controller for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+        
+        let response;
+        try {
+            response = await fetch(fetchURL, {
+                signal: controller.signal,
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            clearTimeout(timeoutId);
+        } catch (fetchError) {
+            clearTimeout(timeoutId);
+            if (fetchError.name === 'AbortError') {
+                throw new Error('Request timed out after 15 seconds. The addon server may be slow or unavailable.');
+            }
+            throw new Error(`Network error: ${fetchError.message}`);
+        }
+        
+        if (!response.ok) {
+            let errorMsg = `HTTP ${response.status}`;
+            if (response.status === 404) {
+                errorMsg += ' - Manifest not found. The addon may have been removed or the URL is incorrect.';
+            } else if (response.status === 403) {
+                errorMsg += ' - Access forbidden. The addon server denied the request.';
+            } else if (response.status === 500) {
+                errorMsg += ' - Server error. The addon server is experiencing issues.';
+            } else if (response.status >= 400 && response.status < 500) {
+                errorMsg += ' - Client error. The request was rejected by the server.';
+            } else if (response.status >= 500) {
+                errorMsg += ' - Server error. The addon server is experiencing issues.';
+            }
+            throw new Error(errorMsg);
+        }
+        
+        // Check content type
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error(`Invalid response type: Expected JSON but got ${contentType || 'unknown'}. The URL may not point to a valid addon manifest.`);
+        }
+        
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseError) {
+            throw new Error('Invalid JSON response. The manifest data is corrupted or malformed.');
+        }
+        
+        // Validate manifest structure
+        if (!data || typeof data !== 'object') {
+            throw new Error('Invalid manifest: Response is not a valid object.');
+        }
+        
+        if (!data.id || typeof data.id !== 'string') {
+            throw new Error('Invalid manifest: Missing or invalid "id" field.');
+        }
+        
+        if (!data.name || typeof data.name !== 'string') {
+            throw new Error('Invalid manifest: Missing or invalid "name" field.');
+        }
+        
+        if (!data.version || typeof data.version !== 'string') {
+            throw new Error('Invalid manifest: Missing or invalid "version" field.');
+        }
+        
+        if (data.catalogs && !Array.isArray(data.catalogs)) {
+            throw new Error('Invalid manifest: "catalogs" field must be an array.');
+        }
+        
+        // Apply the fetched manifest
+        const clone = JSON.parse(JSON.stringify(data));
+        ensureCatalogDragKeys(clone.catalogs);
+        formModel.value = clone;
+        syncJsonModel();
+        nextTick(() => {
+            calculateMaxLabelWidth();
+        });
+        
+        toastRef.value?.show({
+            message: 'Addon reset to latest version from developer.',
+            duration: 3000,
+        });
+    } catch (error) {
+        console.error('Failed to reset addon:', error);
+        await dialog.alert({
+            title: 'Reset Failed',
+            htmlMessage: `Could not fetch the latest manifest from the addon developer.<br><br><strong>Error:</strong> ${error.message}<br><br><small>URL: ${props.manifestURL}</small>`,
+            confirmText: 'OK',
+        });
+    } finally {
+        isResetting.value = false;
+    }
+}
 </script>
 
 <style scoped>
@@ -415,6 +566,34 @@ function toggleCatalogHomeStatus(catalog) {
     background-color: #6c757d;
     cursor: not-allowed;
     opacity: 0.6;
+    transform: none;
+}
+
+.reset-button {
+    padding: 10px 20px;
+    border: none;
+    background-color: #ff8c00;
+    color: #ffffff;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 5px;
+    transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.reset-button:hover:not(:disabled) {
+    background-color: #e67e00;
+}
+
+.reset-button:active:not(:disabled) {
+    background-color: #cc7000;
+    transform: scale(0.96);
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.reset-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+    opacity: 0.5;
     transform: none;
 }
 
@@ -619,6 +798,11 @@ textarea {
     filter: brightness(0) saturate(100%) invert(41%) sepia(94%) saturate(2555%) hue-rotate(201deg) brightness(101%) contrast(101%);
 }
 
+.home-indicator.home-hidden {
+    visibility: hidden;
+    pointer-events: none;
+}
+
 .catalog-type-label {
     margin-right: 10px;
     color: #f5f5f5;
@@ -645,6 +829,15 @@ textarea {
     position: sticky;
     bottom: -20px;
     z-index: 10;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.form-actions-left,
+.form-actions-right {
+    display: flex;
+    gap: 10px;
+    align-items: center;
 }
 
 @media (max-width: 768px) {
@@ -691,6 +884,13 @@ textarea {
     }
     
     .form-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .form-actions-left,
+    .form-actions-right {
+        width: 100%;
         flex-direction: column;
     }
     
