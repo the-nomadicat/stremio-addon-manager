@@ -20,6 +20,7 @@ const toastRef = ref(null)
 
 let isEditModalVisible = ref(false);
 let currentManifest = ref({});
+let currentManifestURL = ref('');
 let currentEditIdx = ref(null);
 
 // current email coming from Authentication.vue
@@ -363,7 +364,6 @@ async function syncUserAddons() {
         console.error('No auth key provided')
         return
     }
-    console.log('Syncing addons...')
 
     const url = `${stremioAPIBase}addonCollectionSet`
 
@@ -396,7 +396,6 @@ async function syncUserAddons() {
                 confirmText: 'OK',
             })
         } else {
-            console.log('Sync complete: ', data)
             // Save the new synced state as the original state
             saveOriginalState()
             await dialog.alert({
@@ -444,12 +443,14 @@ function openEditModal(idx) {
     isEditModalVisible.value = true;
     currentEditIdx.value = idx;
     currentManifest.value = { ...addons.value[idx].manifest };
+    currentManifestURL.value = addons.value[idx].transportUrl;
     document.body.classList.add('modal-open');
 }
 
 function closeEditModal() {
     isEditModalVisible.value = false;
     currentManifest.value = {};
+    currentManifestURL.value = '';
     currentEditIdx.value = null;
     document.body.classList.remove('modal-open');
 }
@@ -655,6 +656,7 @@ async function installAddon() {
             <div class="modal-body">
                 <DynamicForm 
                     :manifest="currentManifest" 
+                    :manifestURL="currentManifestURL"
                     @update-manifest="saveManifestEdit" 
                     @cancel="closeEditModal"
                 />
@@ -752,6 +754,7 @@ async function installAddon() {
     justify-content: center;
     align-items: center;
     overflow: auto;
+    overscroll-behavior: contain;
 }
 
 .modal-content {
@@ -784,6 +787,7 @@ async function installAddon() {
     overflow-y: auto;
     padding: 20px;
     min-height: 0;
+    overscroll-behavior: contain;
 }
 
 /* Tablet and smaller screens - maximize screen usage */
