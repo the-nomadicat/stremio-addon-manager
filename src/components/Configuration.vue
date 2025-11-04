@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import draggable from 'vuedraggable'
 import AddonItem from './AddonItem.vue'
 import Authentication from './Authentication.vue'
@@ -33,6 +33,7 @@ const catalogMatches = ref([])
 const currentMatchIndex = ref(0)
 const showSearchWidget = ref(false)
 const searchWidgetAnimationKey = ref(0)
+const searchInputRef = ref(null)
 let searchDebounceTimer = null
 const catalogMatchCount = computed(() => catalogMatches.value.length)
 const catalogMatchDisplay = computed(() => {
@@ -696,9 +697,12 @@ function openSearchWidget() {
         return;
     }
     
-    // If already open, just trigger the animation again
+    // If already open, just trigger the animation again and refocus
     if (showSearchWidget.value) {
         searchWidgetAnimationKey.value++;
+        nextTick(() => {
+            searchInputRef.value?.focus();
+        });
         return;
     }
     
@@ -706,6 +710,11 @@ function openSearchWidget() {
     catalogSearchQuery.value = '';
     catalogMatches.value = [];
     currentMatchIndex.value = 0;
+    
+    // Focus the input after the widget is rendered
+    nextTick(() => {
+        searchInputRef.value?.focus();
+    });
 }
 
 function closeSearchWidget() {
@@ -849,12 +858,12 @@ onUnmounted(() => {
         <div class="search-widget" :key="searchWidgetAnimationKey">
             <div class="search-widget-header">
                 <input
+                    ref="searchInputRef"
                     v-model="catalogSearchQuery"
                     type="text"
                     placeholder="Search catalogs by name or type..."
                     class="search-widget-input"
                     @input="handleSearchInput"
-                    autofocus
                 />
                 <button 
                     type="button" 
