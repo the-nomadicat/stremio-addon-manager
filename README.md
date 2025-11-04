@@ -28,7 +28,7 @@ Security note: Saved logins are stored locally in this browser only. They are no
 - Remove non-protected addons
 
 ### Per-Addon Catalog Editing
-For each addon, you can open an "Edit manifest" panel and:
+For each addon, you can open an "Edit addon" panel and:
 - Rename that addon's catalogs
 - Delete catalogs you don't want
 - Drag & drop to reorder that addon's catalogs
@@ -95,7 +95,7 @@ Click "Load Addons" to pull in the current addons and catalogs for that account.
 - Drag addons to change priority/order
 - Reorder catalogs
 - Hide/show catalogs on the Home screen (including Cinemeta's catalogs)
-- Open "Edit manifest" for an addon to rename its catalogs, delete ones you don't want, and reorder them — no manual JSON editing required
+- Open "Edit addon" for an addon to rename its catalogs, delete ones you don't want, and reorder them — no manual JSON editing required
 
 **STEP 3: Sync Addons**
 Click "Sync to Stremio" to apply the new order, names, visibility and layout to the currently signed-in account. If you regret it, restore the backup from Step 1.
@@ -103,7 +103,7 @@ Click "Sync to Stremio" to apply the new order, names, visibility and layout to 
 ## Credits / Lineage
 This project is part of an ongoing community effort:
 - **Original concept and implementation:** [pancake3000/stremio-addon-manager](https://github.com/pancake3000/stremio-addon-manager)
-- **Major improvements and the first "Edit manifest" work (renaming/removing catalogs inside an addon):** [redd-ravenn/stremio-addon-manager](https://github.com/redd-ravenn/stremio-addon-manager)
+- **Major improvements and the first "Edit addon" work (renaming/removing catalogs inside an addon):** [redd-ravenn/stremio-addon-manager](https://github.com/redd-ravenn/stremio-addon-manager)
 - **This fork (the-nomadicat/stremio-addon-manager) adds:**
   - Catalog reordering within an addon (drag & drop)
   - Toggle whether each catalog appears on the Stremio Home screen (including Cinemeta catalogs, without uninstalling Cinemeta)
