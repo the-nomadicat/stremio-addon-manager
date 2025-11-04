@@ -1,7 +1,7 @@
 <template>
     <div class="modal-form">
         <div class="modal-form-header">
-            <h3>Edit "{{ headerTitle }}" addon</h3>
+            <h3>Editing "{{ headerTitle }}"</h3>
         </div>
         <div class="modal-form-body">
             <form @submit.prevent="handleSubmit">
@@ -156,6 +156,11 @@ const props = defineProps({
     type: String,
     required: false,
     default: ''
+  },
+  highlightCatalog: {
+    type: [String, Object],
+    required: false,
+    default: null
   }
 })
 
@@ -198,6 +203,17 @@ watch(() => props.manifest, (newManifest) => {
     });
 }, { immediate: true });
 
+watch(() => props.highlightCatalog, (catalogInfo) => {
+    if (catalogInfo) {
+        // Wait for DOM to fully render
+        setTimeout(() => {
+            nextTick(() => {
+                scrollToCatalog(catalogInfo);
+            });
+        }, 500);
+    }
+});
+
 onMounted(() => {
   calculateMaxLabelWidth();
 });
@@ -213,6 +229,108 @@ function calculateMaxLabelWidth() {
   labels.forEach(label => {
     label.style.width = `${maxWidth}px`;
   });
+}
+
+function scrollToCatalog(catalogInfo) {
+    if (!catalogInfo) return;
+    
+    // Find the modal-form scroll container
+    const scrollContainer = document.querySelector('.modal-form');
+    if (!scrollContainer) return;
+    
+    // Find the catalog item element by data attribute or text content
+    const catalogItems = document.querySelectorAll('.catalog-item');
+    
+    // If we have an index, use it directly (most reliable method)
+    if (typeof catalogInfo.index === 'number' && catalogItems[catalogInfo.index]) {
+        const item = catalogItems[catalogInfo.index];
+        
+        // Calculate scroll position to center the item in the modal
+        const itemTop = item.offsetTop;
+        const containerHeight = scrollContainer.clientHeight;
+        const itemHeight = item.offsetHeight;
+        const scrollTo = itemTop - (containerHeight / 2) + (itemHeight / 2);
+        
+        // Scroll the modal-form container
+        scrollContainer.scrollTo({ top: scrollTo, behavior: 'smooth' });
+        
+        // Add highlight animation
+        item.classList.add('catalog-highlight');
+        setTimeout(() => {
+            item.classList.remove('catalog-highlight');
+        }, 600);
+        
+        return;
+    }
+    
+    // Fallback to legacy string-based search for backward compatibility
+    const catalogName = catalogInfo.name || catalogInfo;
+    const catalogType = catalogInfo.type;
+    
+    for (const item of catalogItems) {
+        const input = item.querySelector('input[type="text"]');
+        const label = item.querySelector('.catalog-type-label');
+        
+        // Match by both name and type if type is provided
+        if (catalogType && label) {
+            const itemType = label.textContent.trim();
+            const itemName = input ? input.value : '';
+            
+            if (itemType === catalogType && itemName === catalogName) {
+                // Calculate scroll position to center the item in the modal
+                const itemTop = item.offsetTop;
+                const containerHeight = scrollContainer.clientHeight;
+                const itemHeight = item.offsetHeight;
+                const scrollTo = itemTop - (containerHeight / 2) + (itemHeight / 2);
+                
+                // Scroll the modal-form container
+                scrollContainer.scrollTo({ top: scrollTo, behavior: 'smooth' });
+                
+                // Add highlight animation
+                item.classList.add('catalog-highlight');
+                setTimeout(() => {
+                    item.classList.remove('catalog-highlight');
+                }, 600);
+                
+                return;
+            }
+        }
+        
+        // Fallback: match by name only if type not provided
+        if (input && input.value === catalogName) {
+            // Calculate scroll position to center the item in the modal
+            const itemTop = item.offsetTop;
+            const containerHeight = scrollContainer.clientHeight;
+            const itemHeight = item.offsetHeight;
+            const scrollTo = itemTop - (containerHeight / 2) + (itemHeight / 2);
+            
+            // Scroll the modal-form container
+            scrollContainer.scrollTo({ top: scrollTo, behavior: 'smooth' });
+            
+            // Add highlight animation
+            item.classList.add('catalog-highlight');
+            setTimeout(() => {
+                item.classList.remove('catalog-highlight');
+            }, 600);
+            
+            return;
+        }
+        
+        // Also check catalog type label
+        if (label && label.textContent.trim() === catalogName) {
+            const itemTop = item.offsetTop;
+            const containerHeight = scrollContainer.clientHeight;
+            const itemHeight = item.offsetHeight;
+            const scrollTo = itemTop - (containerHeight / 2) + (itemHeight / 2);
+            
+            scrollContainer.scrollTo({ top: scrollTo, behavior: 'smooth' });
+            item.classList.add('catalog-highlight');
+            setTimeout(() => {
+                item.classList.remove('catalog-highlight');
+            }, 600);
+            return;
+        }
+    }
 }
 
 async function toggleEditMode() {
@@ -853,6 +971,24 @@ textarea {
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 6px;
     background: rgba(255, 255, 255, 0.03);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.catalog-item.catalog-highlight {
+    background: rgba(0, 123, 255, 0.2);
+    border-color: rgba(0, 123, 255, 0.5);
+    animation: highlightPulse 0.6s ease-in-out 1;
+}
+
+@keyframes highlightPulse {
+    0%, 100% {
+        background: rgba(0, 123, 255, 0.2);
+        border-color: rgba(0, 123, 255, 0.5);
+    }
+    50% {
+        background: rgba(0, 123, 255, 0.35);
+        border-color: rgba(0, 123, 255, 0.8);
+    }
 }
 
 .catalog-controls-left {

@@ -22,9 +22,23 @@ let isEditModalVisible = ref(false);
 let currentManifest = ref({});
 let currentManifestURL = ref('');
 let currentEditIdx = ref(null);
+let highlightCatalogInfo = ref(null);
 
 // current email coming from Authentication.vue
 const currentEmail = ref('')
+
+// Find catalog feature
+const catalogSearchQuery = ref('')
+const catalogMatches = ref([])
+const currentMatchIndex = ref(0)
+const showSearchWidget = ref(false)
+const searchWidgetAnimationKey = ref(0)
+let searchDebounceTimer = null
+const catalogMatchCount = computed(() => catalogMatches.value.length)
+const catalogMatchDisplay = computed(() => {
+    if (catalogMatchCount.value === 0) return '';
+    return `${currentMatchIndex.value + 1} / ${catalogMatchCount.value}`;
+})
 
 // Track when changes need to be synced
 const needsSync = ref(false)
@@ -99,16 +113,6 @@ function handleScroll() {
     // Otherwise, make them fixed to the bottom of the viewport
     controlsFixed.value = parentRect.bottom > viewportHeight
 }
-
-onMounted(() => {
-    window.addEventListener('scroll', handleScroll)
-    // Initial check
-    handleScroll()
-})
-
-onUnmounted(() => {
-    window.removeEventListener('scroll', handleScroll)
-})
 
 function safeForFilename(s) {
   return (s || '')
@@ -455,6 +459,7 @@ function closeEditModal() {
     currentManifest.value = {};
     currentManifestURL.value = '';
     currentEditIdx.value = null;
+    highlightCatalogInfo.value = null;
     document.body.classList.remove('modal-open');
 }
 
@@ -566,6 +571,182 @@ async function installAddon() {
         });
     }
 }
+
+async function findCatalog() {
+    const query = catalogSearchQuery.value.trim();
+    
+    if (!query) {
+        catalogMatches.value = [];
+        currentMatchIndex.value = 0;
+        return;
+    }
+    
+    if (!addons.value || addons.value.length === 0) {
+        catalogMatches.value = [];
+        currentMatchIndex.value = 0;
+        return;
+    }
+    
+    const queryLower = query.toLowerCase();
+    catalogMatches.value = [];
+    
+    // Split query into words for multi-word matching
+    const queryWords = queryLower.trim().split(/\s+/);
+    
+    // Search through all addons and their catalogs
+    for (let i = 0; i < addons.value.length; i++) {
+        const addon = addons.value[i];
+        const catalogs = addon.manifest?.catalogs || [];
+        
+        for (let j = 0; j < catalogs.length; j++) {
+            const catalog = catalogs[j];
+            const catalogName = catalog.name || '';
+            const catalogType = catalog.type || '';
+            const catalogNameLower = catalogName.toLowerCase();
+            const catalogTypeLower = catalogType.toLowerCase();
+            
+            let isMatch = false;
+            
+            if (queryWords.length === 1) {
+                // Single word: match either name OR type (original behavior)
+                isMatch = catalogNameLower.includes(queryWords[0]) || 
+                         catalogTypeLower.includes(queryWords[0]);
+            } else {
+                // Multiple words: ALL words must match across name + type combined
+                const combinedText = catalogNameLower + ' ' + catalogTypeLower;
+                isMatch = queryWords.every(word => combinedText.includes(word));
+            }
+            
+            if (isMatch) {
+                // Found a match!
+                catalogMatches.value.push({
+                    addonIndex: i,
+                    catalogIndex: j,
+                    catalogName: catalogName || catalogType,
+                    catalogType: catalogType
+                });
+            }
+        }
+    }
+    
+    if (catalogMatches.value.length > 0) {
+        // Show the first match
+        currentMatchIndex.value = 0;
+        showCurrentMatch();
+    } else {
+        currentMatchIndex.value = 0;
+    }
+}
+
+function showCurrentMatch() {
+    if (catalogMatches.value.length === 0) return;
+    
+    const match = catalogMatches.value[currentMatchIndex.value];
+    
+    // Only open the addon if it's different from the currently open one
+    if (currentEditIdx.value !== match.addonIndex) {
+        openEditAddon(match.addonIndex);
+        
+        // Set highlight after modal opens with a small delay
+        setTimeout(() => {
+            highlightCatalogInfo.value = {
+                name: match.catalogName,
+                type: match.catalogType,
+                index: match.catalogIndex
+            };
+        }, 100);
+    } else {
+        // Same addon, just update the highlight
+        // Clear it first to ensure the watcher triggers even if it's the same catalog name
+        highlightCatalogInfo.value = null;
+        setTimeout(() => {
+            highlightCatalogInfo.value = {
+                name: match.catalogName,
+                type: match.catalogType,
+                index: match.catalogIndex
+            };
+        }, 50);
+    }
+}
+
+function findNext() {
+    if (catalogMatches.value.length === 0) return;
+    
+    currentMatchIndex.value = (currentMatchIndex.value + 1) % catalogMatches.value.length;
+    showCurrentMatch();
+}
+
+function findPrevious() {
+    if (catalogMatches.value.length === 0) return;
+    
+    currentMatchIndex.value = currentMatchIndex.value - 1;
+    if (currentMatchIndex.value < 0) {
+        currentMatchIndex.value = catalogMatches.value.length - 1;
+    }
+    showCurrentMatch();
+}
+
+function openSearchWidget() {
+    if (!addons.value || addons.value.length === 0) {
+        dialog.alert({
+            title: 'No Addons Loaded',
+            htmlMessage: 'Please load addons first before searching for catalogs.',
+            confirmText: 'OK',
+        });
+        return;
+    }
+    
+    // If already open, just trigger the animation again
+    if (showSearchWidget.value) {
+        searchWidgetAnimationKey.value++;
+        return;
+    }
+    
+    showSearchWidget.value = true;
+    catalogSearchQuery.value = '';
+    catalogMatches.value = [];
+    currentMatchIndex.value = 0;
+}
+
+function closeSearchWidget() {
+    showSearchWidget.value = false;
+    catalogSearchQuery.value = '';
+    catalogMatches.value = [];
+    currentMatchIndex.value = 0;
+}
+
+function handleSearchInput() {
+    // Clear existing debounce timer
+    if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer);
+    }
+    
+    // Set new debounce timer (500ms delay)
+    searchDebounceTimer = setTimeout(() => {
+        findCatalog();
+    }, 500);
+}
+
+function handleKeydown(event) {
+    if (event.key === 'Escape') {
+        closeSearchWidget();
+    }
+}
+
+onMounted(() => {
+    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('keydown', handleKeydown)
+    // Initial check
+    handleScroll()
+})
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', handleScroll)
+    window.removeEventListener('keydown', handleKeydown)
+    if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer)
+    }
+})
 </script>
 
 <template>
@@ -614,6 +795,14 @@ async function installAddon() {
 
             <fieldset id="form_step2">
                 <legend>Step 2: Edit/Re-Order Addons & Catalogs</legend>
+                
+                <!-- Find Catalog Button -->
+                <div v-if="addons.length" class="find-catalog-section">
+                    <button type="button" class="button find-catalog-button" @click="openSearchWidget">
+                        Find Catalogs
+                    </button>
+                </div>
+                
                 <draggable v-if="addons.length" :list="addons" item-key="transportUrl" class="sortable-list" ghost-class="ghost"
                     handle=".drag-handle"
                     @start="dragging = true" @end="handleDragEnd">
@@ -655,11 +844,62 @@ async function installAddon() {
         </Teleport>
     </section>
 
+    <!-- Catalog Search Widget -->
+    <div v-if="showSearchWidget" class="search-widget-overlay">
+        <div class="search-widget" :key="searchWidgetAnimationKey">
+            <div class="search-widget-header">
+                <input
+                    v-model="catalogSearchQuery"
+                    type="text"
+                    placeholder="Search catalogs by name or type..."
+                    class="search-widget-input"
+                    @input="handleSearchInput"
+                    autofocus
+                />
+                <button 
+                    type="button" 
+                    class="close-btn" 
+                    @click="closeSearchWidget"
+                    title="Close search"
+                >
+                    ✕
+                </button>
+            </div>
+            
+            <div v-if="catalogMatchCount > 0" class="search-widget-controls">
+                <button 
+                    type="button" 
+                    class="nav-btn" 
+                    @click="findPrevious"
+                    title="Previous match"
+                    :disabled="catalogMatchCount <= 1"
+                >
+                    ◀
+                </button>
+                <span class="match-display">{{ catalogMatchDisplay }}</span>
+                <button 
+                    type="button" 
+                    class="nav-btn" 
+                    @click="findNext"
+                    title="Next match"
+                    :disabled="catalogMatchCount <= 1"
+                >
+                    ▶
+                </button>
+            </div>
+            
+            <div v-else-if="catalogSearchQuery.trim()" class="search-widget-no-results">
+                No matches found
+            </div>
+        </div>
+    </div>
+
     <div v-if="isEditModalVisible" class="modal">
         <div class="modal-content">
             <DynamicForm 
                 :manifest="currentManifest" 
                 :manifestURL="currentManifestURL"
+                :highlightCatalog="highlightCatalogInfo"
                 @update-manifest="saveManifestEdit" 
                 @cancel="closeEditModal"
             />
@@ -899,6 +1139,174 @@ button:disabled {
     opacity: 0.6;
 }
 
+.find-catalog-section {
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.find-catalog-button {
+    background-color: #007bff;
+}
+
+.find-catalog-button:hover {
+    background-color: #0056b3;
+}
+
+.find-catalog-button:active {
+    background-color: #004494;
+}
+
+/* Search Widget Overlay */
+.search-widget-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+    z-index: 2000;
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-start;
+    padding: 15px;
+    pointer-events: none;
+}
+
+.search-widget {
+    background: linear-gradient(135deg, #2a2a2a 0%, #1f1f1f 100%);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8),
+                0 0 0 1px rgba(255, 255, 255, 0.15);
+    padding: 12px;
+    min-width: 320px;
+    max-width: 380px;
+    pointer-events: auto;
+    animation: searchWidgetAppear 0.6s ease-in-out 2;
+}
+
+@keyframes searchWidgetAppear {
+    0%, 100% {
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8),
+                    0 0 0 1px rgba(255, 255, 255, 0.15);
+    }
+    50% {
+        box-shadow: 0 0 32px rgba(0, 123, 255, 0.4),
+                    0 0 0 6px rgba(0, 123, 255, 0.8);
+    }
+}
+
+.search-widget-header {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.search-widget-input {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.08);
+    color: #e0e0e0;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.search-widget-input:focus {
+    outline: none;
+    border-color: #007bff;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.search-widget-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.close-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.close-btn:hover {
+    background-color: #c82333;
+}
+
+.close-btn:active {
+    background-color: #bd2130;
+    transform: scale(0.95);
+}
+
+.search-widget-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.search-widget-controls .nav-btn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    border-radius: 5px;
+    min-width: 38px;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.search-widget-controls .nav-btn:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+.search-widget-controls .nav-btn:active:not(:disabled) {
+    background-color: #004494;
+    transform: scale(0.95);
+}
+
+.search-widget-controls .nav-btn:disabled {
+    background-color: #6c757d;
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.match-display {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e0e0e0;
+    min-width: 55px;
+    text-align: center;
+}
+
+.search-widget-no-results {
+    padding: 8px;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 13px;
+    font-style: italic;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+}
+
 /* Mobile responsive styles for buttons and action rows */
 @media (max-width: 768px) {
     #form_step3 {
@@ -972,6 +1380,39 @@ button:disabled {
     .button.primary.large {
         padding: 12px 14px;
         font-size: 15px;
+    }
+    
+    .search-widget {
+        min-width: 280px;
+        max-width: 320px;
+        padding: 10px;
+    }
+    
+    .search-widget-input {
+        font-size: 13px;
+        padding: 7px 10px;
+    }
+    
+    .close-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 16px;
+    }
+    
+    .search-widget-controls {
+        gap: 8px;
+        padding: 6px;
+    }
+    
+    .search-widget-controls .nav-btn {
+        padding: 5px 10px;
+        font-size: 14px;
+        min-width: 32px;
+    }
+    
+    .match-display {
+        font-size: 13px;
+        min-width: 45px;
     }
 }
 </style>
