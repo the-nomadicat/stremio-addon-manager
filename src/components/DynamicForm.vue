@@ -83,7 +83,12 @@
                                     v-model="element.name"
                                     placeholder="Catalog Name"
                                 />
-                                <button type="button" class="delete-button" @click="removeCatalog(index)">
+                                <button 
+                                    type="button" 
+                                    class="delete-button" 
+                                    :class="{ 'delete-hidden': !catalogHasControllingExtra(element) }"
+                                    @click="handleDeleteCatalog(element, index)"
+                                >
                                     <img src="https://icongr.am/feather/trash-2.svg?size=16" alt="Delete Catalog" />
                                 </button>
                             </div>
@@ -222,6 +227,29 @@ function handleSubmit() {
         message: 'Manifest changes have been applied successfully.',
         duration: 3000,
     });
+}
+
+async function handleDeleteCatalog(catalog, index) {
+    // If catalog has search extra, show scary warning about breaking search functionality
+    if (hasSearchExtra(catalog)) {
+        const catalogName = catalog.name || catalog.type || 'this catalog';
+        const contentType = catalog.type || 'content';
+        const addonName = formModel.value.name || 'this addon';
+        
+        const confirmed = await dialog.confirm({
+            title: '⚠️ Delete Search Catalog?',
+            htmlMessage: `<strong style="color: #ff4444;">WARNING: This will break search functionality!</strong><br><br>` +
+                        `Deleting "<strong>${catalogName}</strong>" will remove the ability to search for <strong>${contentType}</strong> in Stremio via the "<strong>${addonName}</strong>" addon.<br><br>` +
+                        `Are you absolutely sure you want to delete this catalog?`,
+            confirmText: 'Yes, delete anyway',
+            cancelText: 'Cancel',
+        });
+        
+        if (!confirmed) return;
+    }
+    
+    // Proceed with deletion
+    removeCatalog(index);
 }
 
 function removeCatalog(index) {
@@ -686,6 +714,11 @@ async function handleReset() {
     cursor: not-allowed;
     opacity: 0.6;
     transform: none;
+}
+
+.delete-button.delete-hidden {
+    visibility: hidden;
+    pointer-events: none;
 }
 
 .delete-button img {
