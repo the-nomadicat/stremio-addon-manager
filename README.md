@@ -85,20 +85,20 @@ The app will be accessible at `http://localhost:8080`.
 Contributors: please do not silently change this behavior.
 
 ## Step-by-Step Workflow (how the UI is meant to be used)
-**STEP 0: Authenticate**
+**STEP 1: Authenticate**
 Log in using Stremio email + password (Facebook login is not supported here), or paste an existing AuthKey from https://web.stremio.com/. If saved logins are enabled, you can just pick a stored account instead of typing credentials again.
 
-**STEP 1: Load Addons / Backup**
+**STEP 2: Load Addons / Backup**
 Click "Load Addons" to pull in the current addons and catalogs for that account. Click "Backup" to download a JSON snapshot of that configuration. Use "Restore…" later to re-import that snapshot or to clone the same setup onto another account.
 
-**STEP 2: Edit / Re-order Addons & Catalogs**
+**STEP 3: Edit / Re-order Addons & Catalogs**
 - Drag addons to change priority/order
 - Reorder catalogs
 - Hide/show catalogs on the Home screen (including Cinemeta's catalogs)
 - Open "Edit addon" for an addon to rename its catalogs, delete ones you don't want, and reorder them — no manual JSON editing required
 
-**STEP 3: Sync Addons**
-Click "Sync to Stremio" to apply the new order, names, visibility and layout to the currently signed-in account. If you regret it, restore the backup from Step 1.
+**STEP 4: Sync Addons**
+Click "Sync to Stremio" to apply the new order, names, visibility and layout to the currently signed-in account. If you regret it, restore the backup from Step 2.
 
 ## Credits / Lineage
 This project is part of an ongoing community effort:

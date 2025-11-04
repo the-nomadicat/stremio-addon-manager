@@ -505,7 +505,7 @@ defineExpose({ verifyCredentialsForLoad, handleLoadAddonsFlow, canLoadAddons })
 
 <template>
   <div>
-    <legend>Step 0: Authenticate</legend>
+    <legend>Step 1: Authenticate</legend>
 
     <div class="save-toggle" :class="{ 'is-enabled': savingEnabled }">
       <button
@@ -559,7 +559,7 @@ defineExpose({ verifyCredentialsForLoad, handleLoadAddonsFlow, canLoadAddons })
       >
     </div>
     
-    <div class="separator"><strong>OR...</strong> Use an authentication key (see "Step 0" in the guide above)</div>
+    <div class="separator"><strong>OR...</strong> Use an authentication key (see "Step 1" in the guide above)</div>
     
     <div class="field-group">
       <label class="field-label" for="auth-key">AuthKey</label>
