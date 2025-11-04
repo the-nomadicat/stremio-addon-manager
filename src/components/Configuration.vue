@@ -442,7 +442,7 @@ function setUserEmail(val) {
   currentEmail.value = (val || '').trim()
 }
 
-function openEditModal(idx) {
+function openEditAddon(idx) {
     isEditModalVisible.value = true;
     currentEditIdx.value = idx;
     currentManifest.value = { ...addons.value[idx].manifest };
@@ -623,7 +623,7 @@ async function installAddon() {
                             :isDeletable="!getNestedObjectProperty(element, 'flags.protected', false)"
                             :isConfigurable="getNestedObjectProperty(element, 'manifest.behaviorHints.configurable', false)"
                             @delete-addon="removeAddon"
-                            @edit-manifest="openEditModal"
+                            @edit-addon="openEditAddon"
                             @show-toast="handleToast" />
                     </template>
                 </draggable>
@@ -658,7 +658,7 @@ async function installAddon() {
     <div v-if="isEditModalVisible" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Edit manifest</h3>
+                <h3>Edit "{{ currentManifest.name }}" addon</h3>
             </div>
             <div class="modal-body">
                 <DynamicForm 
@@ -783,6 +783,7 @@ async function installAddon() {
     padding: 20px 20px 15px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     flex-shrink: 0;
+    overscroll-behavior: contain;
 }
 
 .modal-header h3 {

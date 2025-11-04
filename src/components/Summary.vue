@@ -55,7 +55,7 @@ const spotlightSections = [
       },
       {
         title: 'Hide Cinemeta on Home screen',
-        copy: 'You can now easily hide the default Cinemeta catalogs from the Home screen, without uninstalling the Cinemeta addon — which previously wasn’t possible in Stremio.',
+        copy: 'You can now hide the default Cinemeta catalogs without uninstalling the Cinemeta addon — something Stremio doesn’t support natively.',
         status: 'new'
       }
     ]
@@ -177,16 +177,6 @@ function togglePanel(id) {
     openPanels.value = next
     persistPanels(next)
   }
-}
-
-function scrollToFaq() {
-  const el = document.querySelector('#faq')
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-function scrollToConfigure() {
-  const el = document.querySelector('#configure')
-  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 </script>
 

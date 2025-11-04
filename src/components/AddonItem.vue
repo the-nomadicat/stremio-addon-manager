@@ -30,7 +30,7 @@
     }
   })
   
-  const emits = defineEmits(['delete-addon', 'edit-manifest', 'show-toast'])
+  const emits = defineEmits(['delete-addon', 'edit-addon', 'show-toast'])
   
   const defaultLogo = 'https://icongr.am/feather/box.svg?size=48&color=ffffff'
   
@@ -149,7 +149,7 @@
   }
   
   function openEditManifestModal() {
-    emits('edit-manifest', props.idx)
+    emits('edit-addon', props.idx)
   }
 </script>
 
@@ -174,7 +174,7 @@
           @click="copyManifestURLToClipboard" @mousedown.stop @touchstart.stop>
           <img src="https://icongr.am/feather/clipboard.svg?size=12">
         </button>
-        <button class="button icon-only edit-manifest" title="Edit manifest JSON" 
+        <button class="button icon-only edit-addon" title="Edit addon" 
           @click="openEditManifestModal" @mousedown.stop @touchstart.stop>
           <img src="https://icongr.am/feather/edit.svg?size=12">
         </button>
@@ -307,7 +307,7 @@
 
 .visit-url img,
 .copy-url img,
-.edit-manifest img {
+.edit-addon img {
   width: 20px;
   height: 20px;
   filter: brightness(0); /* Make icons black */
@@ -323,7 +323,7 @@
 
 .dark .visit-url img,
 .dark .copy-url img,
-.dark .edit-manifest img {
+.dark .edit-addon img {
   filter: brightness(0); /* Keep icons black even in dark mode */
 }
 
