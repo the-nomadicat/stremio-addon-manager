@@ -89,22 +89,22 @@ function handleScroll() {
     if (!controlsRef.value) return
     
     const controlsElement = controlsRef.value
-    const parent = controlsElement.parentElement // The fieldset (Step 3)
+    const parent = controlsElement.parentElement // The fieldset (Step 4)
     
     if (!parent) return
     
-    // Get Step 2 element to check if we've scrolled above the addon list
+    // Get Step 3 element to check if we've scrolled above the addon list
     const step2Element = document.getElementById('form_step2')
     
     const parentRect = parent.getBoundingClientRect()
     const step2Rect = step2Element?.getBoundingClientRect()
     const viewportHeight = window.innerHeight
     
-    // Check if Step 2 is actually visible in the viewport
-    // Step 2 is visible if its top is above viewport bottom AND its bottom is below viewport top
+    // Check if Step 3 is actually visible in the viewport
+    // Step 3 is visible if its top is above viewport bottom AND its bottom is below viewport top
     const step2Visible = step2Rect && step2Rect.top < viewportHeight && step2Rect.bottom > 0
     
-    // If Step 2 is completely scrolled off (either above or below viewport), hide sticky controls
+    // If Step 3 is completely scrolled off (either above or below viewport), hide sticky controls
     if (!step2Visible) {
         controlsFixed.value = false
         return
@@ -773,7 +773,7 @@ onUnmounted(() => {
             </fieldset>
 
             <fieldset id="form_step1">
-                <legend>Step 1: Load Addons / Backup</legend>
+                <legend>Step 2: Load Addons / Backup</legend>
                 <div v-if="authRef?.canLoadAddons" class="action-row">
                     <div class="left-actions">
                         <button class="button primary" @click="loadUserAddons">
@@ -799,11 +799,11 @@ onUnmounted(() => {
                         />
                     </div>
                 </div>
-                <p v-else class="empty-state">Authenticate above via "Step 0: Authenticate" to load, backup, or restore addons.</p>
+                <p v-else class="empty-state">Authenticate above via "Step 1: Authenticate" to load, backup, or restore addons.</p>
             </fieldset>
 
             <fieldset id="form_step2">
-                <legend>Step 2: Edit/Re-Order Addons & Catalogs</legend>
+                <legend>Step 3: Edit/Re-Order Addons & Catalogs</legend>
                 
                 <!-- Find Catalog Button -->
                 <div v-if="addons.length" class="find-catalog-section">
@@ -829,7 +829,7 @@ onUnmounted(() => {
             </fieldset>
 
             <fieldset id="form_step3">
-                <legend>Step 3: Sync Addons</legend>
+                <legend>Step 4: Sync Addons</legend>
                 <div v-if="addons.length" ref="controlsRef" class="action-row sticky-controls" :class="{ 'controls-fixed': controlsFixed }">
                     <div class="left-actions">
                         <button type="button" class="button primary large icon" :class="{ 'pulse': needsSync }" :disabled="!needsSync" @click="syncUserAddons">

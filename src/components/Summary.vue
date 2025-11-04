@@ -64,7 +64,7 @@ const spotlightSections = [
 
 const workflowSteps = [
   {
-    step: 'Step 0',
+    step: 'Step 1',
     title: 'Authenticate',
     items: [
       'If you want fast account switching, turn on “Enable saved logins on this device”. This keeps multiple accounts (email / password / AuthKey) in this browser only.',
@@ -73,7 +73,7 @@ const workflowSteps = [
     ]
   },
   {
-    step: 'Step 1',
+    step: 'Step 2',
     title: 'Load / Backup',
     items: [
       'Click “Load Addons” to pull in your current addons and catalogs from the authenticated account.',
@@ -82,7 +82,7 @@ const workflowSteps = [
     ]
   },
   {
-    step: 'Step 2',
+    step: 'Step 3',
     title: 'Edit & Reorder',
     items: [
       'Reorder addons by dragging their handles. This affects which sources and catalogs show up first in Stremio.',
@@ -92,12 +92,12 @@ const workflowSteps = [
     ]
   },
   {
-    step: 'Step 3',
+    step: 'Step 4',
     title: 'Sync to Stremio',
     items: [
       'Check everything one last time: the addons order, and within an addon also check the catalog names, their order, and which catalogs are visible on the Home screen.',
-      'Click “Sync to Stremio” to apply the new layout to the currently signed-in account.',
-      'If you don’t like the result, use the backup from Step 1 and restore it.'
+      'Click "Sync to Stremio" to apply the new layout to the currently signed-in account.',
+      'If you don\'t like the result, use the backup from Step 2 and restore it.'
     ]
   }
 ]
