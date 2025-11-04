@@ -1,141 +1,148 @@
 <template>
-    <form @submit.prevent="handleSubmit">
-        <div v-if="!isAdvancedMode">
-            <div class="form-group">
-                <label for="name">Name</label>
-                <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    v-model="formModel.name"
-                />
-            </div>
-            
-            <div class="form-group">
-                <label for="description">Description</label>
-                <textarea
-                    id="description"
-                    name="description"
-                    rows="4"
-                    v-model="formModel.description"
-                ></textarea>
-            </div>
+    <div class="modal-form">
+        <div class="modal-form-header">
+            <h3>Edit "{{ headerTitle }}" addon</h3>
+        </div>
+        <div class="modal-form-body">
+            <form @submit.prevent="handleSubmit">
+                <div v-if="!isAdvancedMode">
+                    <div class="form-group">
+                        <label for="name">Name</label>
+                        <input
+                            id="name"
+                            name="name"
+                            type="text"
+                            v-model="formModel.name"
+                        />
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea
+                            id="description"
+                            name="description"
+                            rows="4"
+                            v-model="formModel.description"
+                        ></textarea>
+                    </div>
 
-            <div class="form-group">
-                <label for="logo">Logo URL</label>
-                <input
-                    id="logo"
-                    name="logo"
-                    type="text"
-                    v-model="formModel.logo"
-                />
-            </div>
+                    <div class="form-group">
+                        <label for="logo">Logo URL</label>
+                        <input
+                            id="logo"
+                            name="logo"
+                            type="text"
+                            v-model="formModel.logo"
+                        />
+                    </div>
 
-            <div class="form-group">
-                <label for="background">Background URL</label>
-                <input
-                    id="background"
-                    name="background"
-                    type="text"
-                    v-model="formModel.background"
-                />
-            </div>
-    
-            <div v-if="formModel.catalogs && formModel.catalogs.length > 0" class="form-group">
-                <label>Catalogs</label>
-                <Draggable
-                    v-model="formModel.catalogs"
-                    item-key="__dragKey"
-                    class="catalog-list"
-                    ghost-class="catalog-ghost"
-                    handle=".drag-handle"
-                    @end="onCatalogReorder"
-                    tag="div"
-                >
-                    <template #item="{ element, index }">
-                        <div class="catalog-item" :key="element.__dragKey">
-                            <div class="catalog-controls-left">
-                                <span class="drag-handle" aria-label="Reorder catalog">
-                                    <img src="https://icongr.am/feather/move.svg?size=24" alt="" aria-hidden="true" />
-                                </span>
-                                <!-- Visibility toggle indicator(s) -->
-                                <span 
-                                    class="visibility-indicator" 
-                                    :class="{ 
-                                        'is-visible': catalogHasControllingExtra(element) && isCatalogVisible(element),
-                                        'visibility-hidden': !catalogHasControllingExtra(element)
-                                    }"
-                                    :title="getVisibilityTitle(element)"
-                                    @click="catalogHasControllingExtra(element) ? toggleCatalogVisibility(element) : null"
-                                >
-                                    <img v-if="hasSearchExtra(element)" src="https://icongr.am/feather/home.svg?size=20" alt="" aria-hidden="true" class="icon-home" />
-                                    <img v-if="hasSearchExtra(element)" src="https://icongr.am/feather/compass.svg?size=20" alt="" aria-hidden="true" class="icon-discover" />
-                                    <img v-if="!hasSearchExtra(element) && hasGenreExtra(element)" src="https://icongr.am/feather/home.svg?size=24" alt="" aria-hidden="true" />
-                                </span>
-                                <label :for="'catalog-' + element.type" class="catalog-type-label">
-                                    {{ element.type }}
-                                </label>
-                            </div>
-                            <div class="catalog-controls-right">
-                                <input
-                                    :id="'catalog-' + element.type"
-                                    type="text"
-                                    v-model="element.name"
-                                    placeholder="Catalog Name"
-                                />
-                                <button 
-                                    type="button" 
-                                    class="delete-button" 
-                                    :class="{ 'delete-hidden': !catalogHasControllingExtra(element) }"
-                                    @click="handleDeleteCatalog(element, index)"
-                                >
-                                    <img src="https://icongr.am/feather/trash-2.svg?size=16" alt="Delete Catalog" />
-                                </button>
-                            </div>
+                    <div class="form-group">
+                        <label for="background">Background URL</label>
+                        <input
+                            id="background"
+                            name="background"
+                            type="text"
+                            v-model="formModel.background"
+                        />
+                    </div>
+        
+                    <div v-if="formModel.catalogs && formModel.catalogs.length > 0" class="form-group">
+                        <label>Catalogs</label>
+                        <Draggable
+                            v-model="formModel.catalogs"
+                            item-key="__dragKey"
+                            class="catalog-list"
+                            ghost-class="catalog-ghost"
+                            handle=".drag-handle"
+                            @end="onCatalogReorder"
+                            tag="div"
+                        >
+                            <template #item="{ element, index }">
+                                <div class="catalog-item" :key="element.__dragKey">
+                                    <div class="catalog-controls-left">
+                                        <span class="drag-handle" aria-label="Reorder catalog">
+                                            <img src="https://icongr.am/feather/move.svg?size=24" alt="" aria-hidden="true" />
+                                        </span>
+                                        <!-- Visibility toggle indicator(s) -->
+                                        <span 
+                                            class="visibility-indicator" 
+                                            :class="{ 
+                                                'is-visible': catalogHasControllingExtra(element) && isCatalogVisible(element),
+                                                'visibility-hidden': !catalogHasControllingExtra(element)
+                                            }"
+                                            :title="getVisibilityTitle(element)"
+                                            @click="catalogHasControllingExtra(element) ? toggleCatalogVisibility(element) : null"
+                                        >
+                                            <img v-if="hasSearchExtra(element)" src="https://icongr.am/feather/home.svg?size=20" alt="" aria-hidden="true" class="icon-home" />
+                                            <img v-if="hasSearchExtra(element)" src="https://icongr.am/feather/compass.svg?size=20" alt="" aria-hidden="true" class="icon-discover" />
+                                            <img v-if="!hasSearchExtra(element) && hasGenreExtra(element)" src="https://icongr.am/feather/home.svg?size=24" alt="" aria-hidden="true" />
+                                        </span>
+                                        <label :for="'catalog-' + element.type" class="catalog-type-label">
+                                            {{ element.type }}
+                                        </label>
+                                    </div>
+                                    <div class="catalog-controls-right">
+                                        <input
+                                            :id="'catalog-' + element.type"
+                                            type="text"
+                                            v-model="element.name"
+                                            placeholder="Catalog Name"
+                                        />
+                                        <button 
+                                            type="button" 
+                                            class="delete-button" 
+                                            :class="{ 'delete-hidden': !catalogHasControllingExtra(element) }"
+                                            @click="handleDeleteCatalog(element, index)"
+                                        >
+                                            <img src="https://icongr.am/feather/trash-2.svg?size=16" alt="Delete Catalog" />
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                        </Draggable>
+                    </div>
+        
+                    <div class="form-actions">
+                        <div class="form-actions-left">
+                            <button class="save-button" type="submit">Save</button>
+                            <button type="button" class="switch-mode-button" @click="toggleEditMode">Advanced mode</button>
+                            <button type="button" class="cancel-button" @click="handleCancel">Cancel</button>
                         </div>
-                    </template>
-                </Draggable>
-            </div>
-    
-            <div class="form-actions">
-                <div class="form-actions-left">
-                    <button class="save-button" type="submit">Save</button>
-                    <button type="button" class="switch-mode-button" @click="toggleEditMode">Advanced mode</button>
-                    <button type="button" class="cancel-button" @click="handleCancel">Cancel</button>
+                        <div class="form-actions-right">
+                            <button type="button" class="reset-button" @click="handleReset" :disabled="isResetting" :title="isResetting ? 'Fetching manifest...' : 'Fetch and apply the latest manifest from the addon developer'">
+                                {{ isResetting ? 'Resetting...' : 'Reset Addon' }}
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-actions-right">
-                    <button type="button" class="reset-button" @click="handleReset" :disabled="isResetting" :title="isResetting ? 'Fetching manifest...' : 'Fetch and apply the latest manifest from the addon developer'">
-                        {{ isResetting ? 'Resetting...' : 'Reset Addon' }}
-                    </button>
+                
+                <div v-else class="advanced-mode-container">
+                    <textarea v-model="jsonModel" class="json-editor"></textarea>
+                    <div class="form-actions">
+                        <div class="form-actions-left">
+                            <button class="save-button" type="button" @click="updateFromJson">Save</button>
+                            <button type="button" class="switch-mode-button" @click="toggleEditMode">Classic mode</button>
+                            <button type="button" class="cancel-button" @click="handleCancel">Cancel</button>
+                        </div>
+                        <div class="form-actions-right">
+                            <button type="button" class="reset-button" @click="handleReset" :disabled="isResetting" :title="isResetting ? 'Fetching manifest...' : 'Fetch and apply the latest manifest from the addon developer'">
+                                {{ isResetting ? 'Resetting...' : 'Reset Addon' }}
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </div>
+                
+                <!-- Teleport Toast to body but keep within single root element -->
+                <Teleport to="body">
+                    <Toast ref="toastRef" />
+                </Teleport>
+            </form>
         </div>
-        
-        <div v-else class="advanced-mode-container">
-            <textarea v-model="jsonModel" class="json-editor"></textarea>
-            <div class="form-actions">
-                <div class="form-actions-left">
-                    <button class="save-button" type="button" @click="updateFromJson">Save</button>
-                    <button type="button" class="switch-mode-button" @click="toggleEditMode">Classic mode</button>
-                    <button type="button" class="cancel-button" @click="handleCancel">Cancel</button>
-                </div>
-                <div class="form-actions-right">
-                    <button type="button" class="reset-button" @click="handleReset" :disabled="isResetting" :title="isResetting ? 'Fetching manifest...' : 'Fetch and apply the latest manifest from the addon developer'">
-                        {{ isResetting ? 'Resetting...' : 'Reset Addon' }}
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Teleport Toast to body but keep within single root element -->
-        <Teleport to="body">
-            <Toast ref="toastRef" />
-        </Teleport>
-    </form>
+    </div>
 </template>
 
 <script setup>
-import { ref, watch, defineEmits, onMounted, nextTick } from 'vue'
+import { ref, watch, defineEmits, onMounted, nextTick, computed } from 'vue'
 import Draggable from 'vuedraggable'
 import { useDialog } from './DialogHost.vue'
 import Toast from './Toast.vue'
@@ -167,6 +174,17 @@ const initialManifest = ref(null)
 const isResetting = ref(false)
 const dialog = useDialog()
 const toastRef = ref(null)
+const headerTitle = computed(() => {
+    const name = formModel.value?.name;
+    if (typeof name === 'string' && name.trim().length > 0) {
+        return name.trim();
+    }
+    const manifestName = props.manifest?.name;
+    if (typeof manifestName === 'string' && manifestName.trim().length > 0) {
+        return manifestName.trim();
+    }
+    return 'Addon';
+});
 
 watch(() => props.manifest, (newManifest) => {
     const clone = JSON.parse(JSON.stringify(newManifest));
@@ -575,6 +593,42 @@ async function handleReset() {
 </script>
 
 <style scoped>
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    flex: 1 1 auto;
+    width: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.modal-form-header {
+    padding: 20px 20px 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    background: #2e2e2e;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.modal-form-header h3 {
+    margin: 0;
+    user-select: none;
+    pointer-events: auto;
+}
+
+.modal-form-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    min-height: 0;
+}
+
 .save-button {
     padding: 10px 20px;
     border: none;
@@ -920,11 +974,11 @@ textarea {
     gap: 10px;
     margin-top: 20px;
     padding: 20px;
-    margin: 0 -20px -20px -20px;
+    margin: 0 -20px 0 -20px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     background: linear-gradient(to top, #2e2e2e 0%, #2e2e2e 70%, rgba(46, 46, 46, 0.95) 100%);
     position: sticky;
-    bottom: -20px;
+    bottom: 0;
     z-index: 10;
     justify-content: space-between;
     align-items: center;
@@ -937,7 +991,25 @@ textarea {
     align-items: center;
 }
 
+@media (max-width: 1024px) {
+    .modal-form-header {
+        padding: 15px 15px 12px;
+    }
+    
+    .modal-form-body {
+        padding: 15px;
+    }
+}
+
 @media (max-width: 768px) {
+    .modal-form-header {
+        padding: 12px;
+    }
+    
+    .modal-form-body {
+        padding: 12px;
+    }
+    
     /* Optimize spacing for mobile */
     .form-group {
         margin-bottom: 12px;
@@ -956,9 +1028,9 @@ textarea {
     .form-actions {
         flex-wrap: wrap;
         gap: 8px;
-        margin: 0 -12px -12px -12px;
+        margin: 0 -12px 0 -12px;
         padding: 12px;
-        bottom: -12px;
+        bottom: 0;
     }
     
     .form-actions button {

@@ -657,17 +657,12 @@ async function installAddon() {
 
     <div v-if="isEditModalVisible" class="modal">
         <div class="modal-content">
-            <div class="modal-header">
-                <h3>Edit "{{ currentManifest.name }}" addon</h3>
-            </div>
-            <div class="modal-body">
-                <DynamicForm 
-                    :manifest="currentManifest" 
-                    :manifestURL="currentManifestURL"
-                    @update-manifest="saveManifestEdit" 
-                    @cancel="closeEditModal"
-                />
-            </div>
+            <DynamicForm 
+                :manifest="currentManifest" 
+                :manifestURL="currentManifestURL"
+                @update-manifest="saveManifestEdit" 
+                @cancel="closeEditModal"
+            />
         </div>
     </div>
 </template>
@@ -779,25 +774,6 @@ async function installAddon() {
     flex-direction: column;
 }
 
-.modal-header {
-    padding: 20px 20px 15px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    flex-shrink: 0;
-    overscroll-behavior: contain;
-}
-
-.modal-header h3 {
-    margin: 0;
-}
-
-.modal-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 20px;
-    min-height: 0;
-    overscroll-behavior: contain;
-}
-
 /* Tablet and smaller screens - maximize screen usage */
 @media (max-width: 1024px) {
     .modal-content {
@@ -806,14 +782,6 @@ async function installAddon() {
         height: 95vh;
         max-height: 95vh;
         border-radius: 8px;
-    }
-    
-    .modal-header {
-        padding: 15px 15px 12px;
-    }
-    
-    .modal-body {
-        padding: 15px;
     }
 }
 
@@ -830,14 +798,6 @@ async function installAddon() {
         max-height: none;
         border-radius: 0;
         margin: 0;
-    }
-    
-    .modal-header {
-        padding: 12px;
-    }
-    
-    .modal-body {
-        padding: 12px;
     }
 }
 
