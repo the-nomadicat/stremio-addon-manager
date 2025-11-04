@@ -58,17 +58,19 @@
                                 <span class="drag-handle" aria-label="Reorder catalog">
                                     <img src="https://icongr.am/feather/move.svg?size=24" alt="" aria-hidden="true" />
                                 </span>
-                                <!-- Always render home indicator to maintain alignment, but hide if not applicable -->
+                                <!-- Visibility toggle indicator(s) -->
                                 <span 
-                                    class="home-indicator" 
+                                    class="visibility-indicator" 
                                     :class="{ 
-                                        'is-home': catalogHasRequiredExtra(element) && isCatalogOnHome(element),
-                                        'home-hidden': !catalogHasRequiredExtra(element)
+                                        'is-visible': catalogHasControllingExtra(element) && isCatalogVisible(element),
+                                        'visibility-hidden': !catalogHasControllingExtra(element)
                                     }"
-                                    :title="catalogHasRequiredExtra(element) ? (isCatalogOnHome(element) ? 'Shown on Home page' : 'Discover only') : ''"
-                                    @click="catalogHasRequiredExtra(element) ? toggleCatalogHomeStatus(element) : null"
+                                    :title="getVisibilityTitle(element)"
+                                    @click="catalogHasControllingExtra(element) ? toggleCatalogVisibility(element) : null"
                                 >
-                                    <img src="https://icongr.am/feather/home.svg?size=24" alt="" aria-hidden="true" />
+                                    <img v-if="hasSearchExtra(element)" src="https://icongr.am/feather/home.svg?size=20" alt="" aria-hidden="true" class="icon-home" />
+                                    <img v-if="hasSearchExtra(element)" src="https://icongr.am/feather/compass.svg?size=20" alt="" aria-hidden="true" class="icon-discover" />
+                                    <img v-if="!hasSearchExtra(element) && hasGenreExtra(element)" src="https://icongr.am/feather/home.svg?size=24" alt="" aria-hidden="true" />
                                 </span>
                                 <label :for="'catalog-' + element.type" class="catalog-type-label">
                                     {{ element.type }}
@@ -289,15 +291,100 @@ function syncJsonModel() {
     jsonModel.value = JSON.stringify(toSanitizedManifest(formModel.value), null, 2);
 }
 
-function catalogHasRequiredExtra(catalog) {
-    return Array.isArray(catalog.extra) && catalog.extra.length > 0 && 
-           catalog.extra.some(e => e && typeof e === 'object' && 'isRequired' in e);
+function hasSearchExtra(catalog) {
+    if (!Array.isArray(catalog.extra)) return false;
+    return catalog.extra.some(e => e && typeof e === 'object' && e.name === 'search');
 }
 
-function isCatalogOnHome(catalog) {
+function hasGenreExtra(catalog) {
     if (!Array.isArray(catalog.extra)) return false;
-    // Catalog appears on home if NO extras have isRequired: true
-    return !catalog.extra.some(e => e && e.isRequired === true);
+    return catalog.extra.some(e => e && typeof e === 'object' && e.name === 'genre');
+}
+
+function getSearchExtra(catalog) {
+    if (!Array.isArray(catalog.extra)) return null;
+    return catalog.extra.find(e => e && typeof e === 'object' && e.name === 'search') || null;
+}
+
+function getGenreExtra(catalog) {
+    if (!Array.isArray(catalog.extra)) return null;
+    return catalog.extra.find(e => e && typeof e === 'object' && e.name === 'genre') || null;
+}
+
+function catalogHasControllingExtra(catalog) {
+    // Check if catalog has either "search" or "genre" extra
+    return hasSearchExtra(catalog) || hasGenreExtra(catalog);
+}
+
+function isCatalogVisible(catalog) {
+    // When search extra exists, it controls visibility
+    if (hasSearchExtra(catalog)) {
+        const searchExtra = getSearchExtra(catalog);
+        return searchExtra && searchExtra.isRequired !== true;
+    }
+    
+    // When only genre exists, it controls visibility
+    if (hasGenreExtra(catalog)) {
+        const genreExtra = getGenreExtra(catalog);
+        return genreExtra && genreExtra.isRequired !== true;
+    }
+    
+    return false;
+}
+
+function getVisibilityTitle(catalog) {
+    if (!catalogHasControllingExtra(catalog)) return '';
+    
+    const isVisible = isCatalogVisible(catalog);
+    
+    if (hasSearchExtra(catalog)) {
+        // Combined Home + Discover control
+        return isVisible ? 'Visible on Home & Discover pages' : 'Hidden from Home & Discover pages';
+    } else {
+        // Genre controls Home (and implicitly Discover)
+        return isVisible ? 'Visible on Home page' : 'Hidden from Home page';
+    }
+}
+
+function toggleCatalogVisibility(catalog) {
+    if (!Array.isArray(catalog.extra)) return;
+    
+    const isCurrentlyVisible = isCatalogVisible(catalog);
+    
+    // When search extra exists, it controls visibility
+    if (hasSearchExtra(catalog)) {
+        const searchExtra = getSearchExtra(catalog);
+        if (!searchExtra) return;
+        
+        if (isCurrentlyVisible) {
+            // Hide: add isRequired property
+            searchExtra.isRequired = true;
+        } else {
+            // Show: remove isRequired property
+            delete searchExtra.isRequired;
+        }
+        
+        // Ensure genre extra has no isRequired property when search controls visibility
+        const genreExtra = getGenreExtra(catalog);
+        if (genreExtra && 'isRequired' in genreExtra) {
+            delete genreExtra.isRequired;
+        }
+    } 
+    // When only genre exists, it controls visibility
+    else if (hasGenreExtra(catalog)) {
+        const genreExtra = getGenreExtra(catalog);
+        if (!genreExtra) return;
+        
+        if (isCurrentlyVisible) {
+            // Hide: add isRequired property
+            genreExtra.isRequired = true;
+        } else {
+            // Show: remove isRequired property
+            delete genreExtra.isRequired;
+        }
+    }
+    
+    syncJsonModel();
 }
 
 async function handleCancel() {
@@ -331,30 +418,6 @@ async function handleCancel() {
             nextTick(() => calculateMaxLabelWidth());
         }
         emits('cancel');
-    }
-}
-
-function toggleCatalogHomeStatus(catalog) {
-    if (!Array.isArray(catalog.extra)) return;
-    
-    const currentlyOnHome = isCatalogOnHome(catalog);
-    
-    // Find first extra with isRequired property and toggle it
-    const extraWithRequired = catalog.extra.find(e => e && typeof e === 'object' && 'isRequired' in e);
-    
-    if (extraWithRequired) {
-        // Toggle: if currently on home (all false), set first to true; otherwise set all to false
-        if (currentlyOnHome) {
-            extraWithRequired.isRequired = true;
-        } else {
-            // Set all isRequired to false to show on home
-            catalog.extra.forEach(e => {
-                if (e && 'isRequired' in e) {
-                    e.isRequired = false;
-                }
-            });
-        }
-        syncJsonModel();
     }
 }
 
@@ -764,41 +827,42 @@ textarea {
     user-select: none;
 }
 
-.home-indicator {
+.visibility-indicator {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
+    gap: 4px;
+    min-width: 36px;
     height: 36px;
     background: transparent;
     cursor: pointer;
     border-radius: 6px;
-    padding: 0;
+    padding: 0 4px;
     flex-shrink: 0;
     transition: background-color 0.2s ease, transform 0.1s ease;
 }
 
-.home-indicator:hover {
+.visibility-indicator:hover {
     background: rgba(255, 255, 255, 0.08);
 }
 
-.home-indicator:active {
+.visibility-indicator:active {
     background: rgba(255, 255, 255, 0.15);
     transform: scale(0.95);
 }
 
-.home-indicator img {
+.visibility-indicator img {
     pointer-events: none;
     filter: brightness(0) invert(0.5);
     user-select: none;
     transition: filter 0.2s;
 }
 
-.home-indicator.is-home img {
-    filter: brightness(0) saturate(100%) invert(41%) sepia(94%) saturate(2555%) hue-rotate(201deg) brightness(101%) contrast(101%);
+.visibility-indicator.is-visible img {
+    filter: brightness(0) saturate(100%) invert(58%) sepia(98%) saturate(2107%) hue-rotate(85deg) brightness(95%) contrast(101%);
 }
 
-.home-indicator.home-hidden {
+.visibility-indicator.visibility-hidden {
     visibility: hidden;
     pointer-events: none;
 }
