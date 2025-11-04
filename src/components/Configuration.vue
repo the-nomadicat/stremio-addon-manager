@@ -1110,21 +1110,17 @@ button:disabled {
 
 @keyframes pulse {
     0%, 100% {
-        box-shadow: 0 0 20px 5px rgba(20, 133, 79, 0.8),
-                    0 0 40px 10px rgba(20, 133, 79, 0.4);
-        transform: scale(1);
+        background-color: #14854f;
+        box-shadow: 0 0 0 0 rgba(20, 133, 79, 0);
     }
     50% {
-        box-shadow: 0 0 30px 10px rgba(20, 133, 79, 0.9),
-                    0 0 60px 20px rgba(20, 133, 79, 0.5),
-                    0 0 80px 30px rgba(20, 133, 79, 0.3);
-        transform: scale(1.05);
-        background-color: #16a05f;
+        background-color: #18a562;
+        box-shadow: 0 0 0 8px rgba(20, 133, 79, 0.6);
     }
 }
 
 .button.primary.pulse {
-    animation: pulse 0.6s ease-in-out 1;
+    animation: pulse 0.6s ease-in-out 2;
     position: relative;
     z-index: 1;
 }

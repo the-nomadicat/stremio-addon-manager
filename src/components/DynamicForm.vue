@@ -104,7 +104,14 @@
         
                     <div class="form-actions">
                         <div class="form-actions-left">
-                            <button class="save-button" type="submit">Save</button>
+                            <button 
+                                class="save-button" 
+                                :class="{ 'save-button-highlight': hasUnsavedChanges }"
+                                type="submit" 
+                                :disabled="!hasUnsavedChanges"
+                            >
+                                Save
+                            </button>
                             <button type="button" class="switch-mode-button" @click="toggleEditMode">Advanced mode</button>
                             <button type="button" class="cancel-button" @click="handleCancel">Cancel</button>
                         </div>
@@ -120,7 +127,15 @@
                     <textarea v-model="jsonModel" class="json-editor"></textarea>
                     <div class="form-actions">
                         <div class="form-actions-left">
-                            <button class="save-button" type="button" @click="updateFromJson">Save</button>
+                            <button 
+                                class="save-button" 
+                                :class="{ 'save-button-highlight': hasUnsavedChanges }"
+                                type="button" 
+                                @click="updateFromJson"
+                                :disabled="!hasUnsavedChanges"
+                            >
+                                Save
+                            </button>
                             <button type="button" class="switch-mode-button" @click="toggleEditMode">Classic mode</button>
                             <button type="button" class="cancel-button" @click="handleCancel">Cancel</button>
                         </div>
@@ -179,6 +194,7 @@ const initialManifest = ref(null)
 const isResetting = ref(false)
 const dialog = useDialog()
 const toastRef = ref(null)
+const hasUnsavedChanges = ref(false)
 const headerTitle = computed(() => {
     const name = formModel.value?.name;
     if (typeof name === 'string' && name.trim().length > 0) {
@@ -198,6 +214,7 @@ watch(() => props.manifest, (newManifest) => {
     syncJsonModel();
     // Store the initial state when manifest is first loaded
     initialManifest.value = JSON.parse(JSON.stringify(clone));
+    hasUnsavedChanges.value = false;
     nextTick(() => {
         calculateMaxLabelWidth();
     });
@@ -214,9 +231,48 @@ watch(() => props.highlightCatalog, (catalogInfo) => {
     }
 });
 
+// Watch formModel for changes (deep watch)
+watch(formModel, () => {
+    checkForChanges();
+}, { deep: true });
+
+// Watch jsonModel for changes in advanced mode
+watch(jsonModel, () => {
+    if (isAdvancedMode.value) {
+        checkForChanges();
+    }
+});
+
 onMounted(() => {
   calculateMaxLabelWidth();
 });
+
+function checkForChanges() {
+    if (!initialManifest.value) {
+        hasUnsavedChanges.value = false;
+        return;
+    }
+    
+    let currentState, initialState;
+    
+    if (isAdvancedMode.value) {
+        // In advanced mode, compare JSON strings
+        try {
+            currentState = JSON.stringify(JSON.parse(jsonModel.value));
+            initialState = JSON.stringify(toSanitizedManifest(initialManifest.value));
+        } catch (e) {
+            // If JSON is invalid, consider it as changed
+            hasUnsavedChanges.value = true;
+            return;
+        }
+    } else {
+        // In normal mode, compare sanitized manifests
+        currentState = JSON.stringify(toSanitizedManifest(formModel.value));
+        initialState = JSON.stringify(toSanitizedManifest(initialManifest.value));
+    }
+    
+    hasUnsavedChanges.value = currentState !== initialState;
+}
 
 function calculateMaxLabelWidth() {
   const labels = document.querySelectorAll('.catalog-type-label');
@@ -358,6 +414,10 @@ function handleSubmit() {
     emits('update-manifest', sanitized);
     jsonModel.value = JSON.stringify(sanitized, null, 2);
     
+    // Update initial manifest to current state (saved)
+    initialManifest.value = JSON.parse(JSON.stringify(formModel.value));
+    hasUnsavedChanges.value = false;
+    
     // Show success toast
     toastRef.value?.show({
         message: 'Manifest changes have been applied successfully.',
@@ -405,6 +465,11 @@ async function updateFromJson() {
         emits('update-manifest', sanitized);
         jsonModel.value = JSON.stringify(sanitized, null, 2);
         isAdvancedMode.value = false;
+        
+        // Update initial manifest to current state (saved)
+        initialManifest.value = JSON.parse(JSON.stringify(formModel.value));
+        hasUnsavedChanges.value = false;
+        
         nextTick(() => {
             calculateMaxLabelWidth();
         });
@@ -689,6 +754,10 @@ async function handleReset() {
         ensureCatalogDragKeys(clone.catalogs);
         formModel.value = clone;
         syncJsonModel();
+        
+        // Don't reset initialManifest - the fetched manifest is different from parent
+        // and should be treated as an unsaved change that needs to be saved
+        
         nextTick(() => {
             calculateMaxLabelWidth();
         });
@@ -759,11 +828,11 @@ async function handleReset() {
     margin-right: 10px;
 }
 
-.save-button:hover {
+.save-button:hover:not(:disabled) {
     background-color: #14854eef;
 }
 
-.save-button:active {
+.save-button:active:not(:disabled) {
     background-color: #106e41;
     transform: scale(0.96);
     box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.3);
@@ -774,6 +843,21 @@ async function handleReset() {
     cursor: not-allowed;
     opacity: 0.6;
     transform: none;
+}
+
+.save-button-highlight {
+    animation: saveButtonPulse 0.6s ease-in-out 2;
+}
+
+@keyframes saveButtonPulse {
+    0%, 100% {
+        background-color: #14854f;
+        box-shadow: 0 0 0 0 rgba(20, 133, 79, 0);
+    }
+    50% {
+        background-color: #18a562;
+        box-shadow: 0 0 0 8px rgba(20, 133, 79, 0.6);
+    }
 }
 
 .switch-mode-button {
