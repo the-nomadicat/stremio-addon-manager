@@ -102,17 +102,39 @@
                 Can I use this to move Cinemeta catalogs from the top?
             </summary>
             <p>
-                Yes. You can reorder the default Cinemeta catalogs (for example, “Popular - Movies”, “Popular -
-                Series”, “Featured - Movies”, “Featured - Series”) so they’re no longer forced to the very top of
+                Yes. You can reorder the default Cinemeta catalogs (for example, "Popular - Movies", "Popular -
+                Series", "Featured - Movies", "Featured - Series") so they're no longer forced to the very top of
                 your catalog list.
             </p>
             <p>
                 You can also hide those Cinemeta catalogs from the Stremio Home screen without uninstalling the
-                Cinemeta addon itself — just use the Edit icon on the Cinemeta addon and then toggle the Home icon for any catalog you don’t want to see.
+                Cinemeta addon itself — just use the Edit icon on the Cinemeta addon and then toggle the Home icon for any catalog you don't want to see.
             </p>
             <p>
-                However, the built-in top row for “Continue watching” is still controlled by Stremio and cannot be moved
+                However, the built-in top row for "Continue watching" is still controlled by Stremio and cannot be moved
                 or hidden.
+            </p>
+        </details>
+
+        <details>
+            <summary>
+                How do I find a specific catalog across all my addons?
+            </summary>
+            <p>
+                Use the "Find Catalog" button in Step 3 to search for catalogs by name across all your installed addons.
+            </p>
+            <p>
+                The search tool will:
+            </p>
+            <ul>
+                <li>Show you how many matches were found</li>
+                <li>Highlight the matching catalogs in your addon list</li>
+                <li>Let you navigate between matches using Previous/Next buttons</li>
+                <li>Automatically scroll to and highlight each match so you can quickly edit or reorder them</li>
+            </ul>
+            <p>
+                This is especially useful when you have many addons and need to quickly locate specific content types
+                or reorganize similar catalogs across different sources.
             </p>
         </details>
     </section>

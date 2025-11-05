@@ -26,6 +26,9 @@ Security note: Saved logins are stored locally in this browser only. They are no
 - Re-order catalogs, including Cinemeta-provided catalogs (e.g. "Popular", "Featured")
 - Hide or show catalogs on Stremio's Home screen without uninstalling anything
 - Remove non-protected addons
+- **Install new addons** by entering a manifest URL
+- **Search for catalogs** across all your addons to quickly find and jump to specific content
+- **Reset individual addons** to their original manifest configuration
 
 ### Per-Addon Catalog Editing
 For each addon, you can open an "Edit addon" panel and:
@@ -41,6 +44,11 @@ This gives you fine-grained control over what each addon exposes, and how it sur
 - Import that file later ("Restore") to roll back to a known good state or apply the same layout to another account/device
 
 Note: You are responsible for taking the backup. Restoring a bad backup can still make things worse. There's no built-in "safe defaults" button.
+
+### Smart Visual Feedback
+- **Unsaved changes indicator**: The Save button in the addon editor shows when you have unsaved modifications
+- **Sync required indicator**: The "Sync to Stremio" button highlights when changes need to be synced to your account
+- **Sticky sync controls**: The sync section remains accessible at the bottom of your screen while you work with your addon list
 
 ## Recommended IDE Setup
 
@@ -93,12 +101,16 @@ Click "Load Addons" to pull in the current addons and catalogs for that account.
 
 **STEP 3: Edit / Re-order Addons & Catalogs**
 - Drag addons to change priority/order
+- Click "Add Addon..." to install new addons by entering their manifest URL
+- Click "Find Catalog" to search for specific catalogs across all your addons
 - Reorder catalogs
 - Hide/show catalogs on the Home screen (including Cinemeta's catalogs)
 - Open "Edit addon" for an addon to rename its catalogs, delete ones you don't want, and reorder them — no manual JSON editing required
+- Use "Reset Addon" to restore an addon to its original configuration if needed
+- The Save button will indicate when you have unsaved changes in the addon editor
 
 **STEP 4: Sync Addons**
-Click "Sync to Stremio" to apply the new order, names, visibility and layout to the currently signed-in account. If you regret it, restore the backup from Step 2.
+Click "Sync to Stremio" to apply the new order, names, visibility and layout to the currently signed-in account. The button will highlight when you have changes that need syncing. If you regret it, restore the backup from Step 2.
 
 ## Credits / Lineage
 This project is part of an ongoing community effort:

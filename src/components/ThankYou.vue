@@ -8,8 +8,10 @@
             Originally created by pancake3000, improved and refined by redd-ravenn,
             and further expanded here with multi-account login management,
             a guided step-by-step workflow, backup/restore support,
+            catalog search functionality, addon installation and reset features,
             catalog hiding and reordering (including Cinemeta),
-            and per-addon catalog editing without touching JSON.
+            per-addon catalog editing without touching JSON,
+            and smart visual feedback for unsaved changes and sync requirements.
         </p>
     </section>
 </template>
