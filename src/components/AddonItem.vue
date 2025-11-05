@@ -86,50 +86,7 @@
   
   function openAddonConfigurationPage() {
     const configureURL = props.manifestURL.replace("stremio://", "https://").replace("/manifest.json", "/configure");
-    
-    // Try to open in new tab
-    const newWindow = window.open(configureURL, '_blank', 'noopener,noreferrer');
-    
-    // Check if popup was blocked (most mobile browsers block popups)
-    if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-      // Popup blocked - copy URL to clipboard and notify user
-      copyURLToClipboard(configureURL, 'Popup blocked. Configuration URL copied to clipboard. Please paste in browser.');
-    }
-  }
-  
-  async function copyURLToClipboard(url, message) {
-    try {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(url);
-      } else {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = url;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        
-        try {
-          document.execCommand('copy');
-        } finally {
-          document.body.removeChild(textArea);
-        }
-      }
-      
-      emits('show-toast', {
-        message: message,
-        duration: 5000, // Longer duration for important message
-      });
-    } catch (error) {
-      console.error('Error copying URL to clipboard', error);
-      emits('show-toast', {
-        message: 'Could not copy URL. Please open manually: ' + url,
-        duration: 10000,
-      });
-    }
+    window.open(configureURL, '_blank', 'noopener,noreferrer');
   }
   
   function removeAddon() {
