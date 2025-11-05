@@ -248,6 +248,7 @@ defineExpose({
   getAllAccounts,
   selectByEmail,
   formatAccountDisplay,
+  selectedEmail,  // Expose the ref so parent can watch it
 })
 </script>
 

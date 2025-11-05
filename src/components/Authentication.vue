@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick, watch } from 'vue'
 import SavedAccounts from './SavedAccounts.vue'
 import Toast from './Toast.vue'
 import { useDialog } from './DialogHost.vue'
@@ -60,28 +60,33 @@ const canLoadAddons = computed(() => {
   return hasAuthKey || hasEmailPassword
 })
 
-function onSavedSelected(a) {
-  if (!savingEnabled.value) return
-
-  if (!a || !a.email) {
-    if (email.value || password.value) {
-      clearCredentials()
-    }
-    if (authKey.value) {
-      clearAuthKey()
-    }
-    emits('reset-addons')
-    return
-  }
+// Watch the saved account dropdown and update credentials + reset addons when it changes
+watch(() => savedRef.value?.selectedEmail, (newEmail, oldEmail) => {
+  if (!savingEnabled.value || newEmail === oldEmail) return
   
+  // Always reset addons when selection changes
   emits('reset-addons')
-  email.value = a.email
-  password.value = a.password || ''
-  authKey.value = a.authKey || ''
   
-  emits('user-email', email.value)
-  emitAuthKey()
-}
+  // Find the selected account and update credentials
+  if (!newEmail) {
+    // "Not Selected" was chosen - clear everything
+    email.value = ''
+    password.value = ''
+    authKey.value = ''
+    emits('user-email', '')
+    emitAuthKey()
+  } else {
+    // An account was selected - load its credentials
+    const account = savedRef.value?.findByEmail?.(newEmail)
+    if (account) {
+      email.value = account.email
+      password.value = account.password || ''
+      authKey.value = account.authKey || ''
+      emits('user-email', email.value)
+      emitAuthKey()
+    }
+  }
+})
 
 function clearAuthKey() {
   if (!authKey.value) return
@@ -97,11 +102,6 @@ function clearCredentials() {
     password.value = ''
   }
   emits('user-email', email.value)
-}
-
-function resetSavedSelection() {
-  if (!savingEnabled.value) return
-  savedRef.value?.resetSelection?.({ silent: true })
 }
 
 function persistSavingPreference(val) {
@@ -140,15 +140,12 @@ async function handleSavingToggle(nextEnabled) {
 }
 
 function onEmailInput() {
-  resetSavedSelection()
   clearAuthKey()
   emits('user-email', email.value)
   emits('reset-addons')
 }
 
 function onPasswordInput() {
-  resetSavedSelection()
-  clearAuthKey()
   emits('reset-addons')
 }
 
@@ -166,53 +163,47 @@ function onAuthKeyInput(event) {
     return
   }
 
-  resetSavedSelection()
   emitAuthKey()
   emits('reset-addons')
 }
 
-// Silent verification for load addons flow - returns result instead of showing dialogs
-async function verifyCredentialsForLoad() {
+// Helper: Login with email/password to get AuthKey
+async function loginWithEmailPassword(emailToLogin, passwordToLogin) {
   try {
-    const trimmedEmail = email.value.trim();
-    const trimmedPassword = password.value.trim();
-    let key = authKey.value.trim();
+    const loginResp = await fetch(`${props.stremioAPIBase}login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        authKey: null,
+        email: emailToLogin,
+        password: passwordToLogin,
+      }),
+    });
 
-    // If we don't have an authKey but we do have email+password, log in first
-    if (!key && trimmedEmail && trimmedPassword) {
-      const loginResp = await fetch(`${props.stremioAPIBase}login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          authKey: null,
-          email: trimmedEmail,
-          password: trimmedPassword,
-        }),
-      });
-
-      if (!loginResp.ok) {
-        return { ok: false, error: `Login failed: HTTP ${loginResp.status}` };
-      }
-
-      const loginData = await loginResp.json();
-      if (loginData?.error) {
-        return { ok: false, error: loginData.error?.message || 'Login failed' };
-      }
-
-      key = loginData?.result?.authKey || '';
-      if (!key) {
-        return { ok: false, error: 'Login succeeded but no AuthKey received' };
-      }
-
-      authKey.value = key;
-      emitAuthKey();
+    if (!loginResp.ok) {
+      return { ok: false, error: `Login failed: HTTP ${loginResp.status}` };
     }
 
+    const loginData = await loginResp.json();
+    if (loginData?.error) {
+      return { ok: false, error: loginData.error?.message || 'Login failed' };
+    }
+
+    const key = loginData?.result?.authKey || '';
     if (!key) {
-      return { ok: false, error: 'No AuthKey available to verify' };
+      return { ok: false, error: 'Login succeeded but no AuthKey received' };
     }
 
-    // Fetch the current user for an authKey
+    return { ok: true, authKey: key };
+  } catch (err) {
+    console.error('Login failed:', err);
+    return { ok: false, error: err?.message || 'Network error' };
+  }
+}
+
+// Helper: Get user info from AuthKey
+async function getUserFromAuthKey(key) {
+  try {
     const userResp = await fetch(`${props.stremioAPIBase}getUser`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -232,7 +223,191 @@ async function verifyCredentialsForLoad() {
     const profileEmail = user.email || user.mail || '';
     const uid = user._id || user.id || user.uid || '';
 
-    return { ok: true, emailFromKey: profileEmail || '', uid };
+    return { ok: true, email: profileEmail || '', uid };
+  } catch (err) {
+    console.error('getUser failed:', err);
+    return { ok: false, error: err?.message || 'Network error' };
+  }
+}
+
+// Silent verification for load addons flow - returns result instead of showing dialogs
+async function verifyCredentialsForLoad() {
+  try {
+    const trimmedEmail = email.value.trim();
+    const trimmedPassword = password.value.trim();
+    let key = authKey.value.trim();
+
+    // CASE: email+password provided, no AuthKey
+    if (!key && trimmedEmail && trimmedPassword) {
+      // Check if this email exists in saved accounts
+      if (savingEnabled.value) {
+        const savedAccount = savedRef.value?.findByEmail?.(trimmedEmail);
+        
+        if (savedAccount) {
+          // Email exists in saved accounts
+          const savedPassword = (savedAccount.password || '').trim();
+          const savedAuthKey = (savedAccount.authKey || '').trim();
+          
+          // CASE 1: Password matches saved password
+          if (savedPassword && trimmedPassword === savedPassword) {
+            // Try saved AuthKey first (fast path)
+            if (savedAuthKey) {
+              const userResult = await getUserFromAuthKey(savedAuthKey);
+              
+              if (userResult.ok) {
+                // Saved AuthKey still works - use it
+                authKey.value = savedAuthKey;
+                emitAuthKey();
+                return { ok: true, emailFromKey: userResult.email, uid: userResult.uid, usedSavedAuthKey: true };
+              }
+              
+              // AuthKey expired - silent fallback to login
+              console.log('Saved AuthKey expired, getting fresh one...');
+            }
+            
+            // No saved AuthKey or it expired - login to get fresh one
+            const loginResult = await loginWithEmailPassword(trimmedEmail, trimmedPassword);
+            
+            if (!loginResult.ok) {
+              return { ok: false, error: loginResult.error };
+            }
+            
+            // Update saved account with new AuthKey
+            key = loginResult.authKey;
+            authKey.value = key;
+            emitAuthKey();
+            savedRef.value?.updateAuthKeyForEmail?.(trimmedEmail, key);
+            
+            // Verify the new AuthKey
+            const userResult = await getUserFromAuthKey(key);
+            if (!userResult.ok) {
+              return { ok: false, error: 'Failed to verify new AuthKey' };
+            }
+            
+            return { ok: true, emailFromKey: userResult.email, uid: userResult.uid, refreshedAuthKey: true };
+          }
+          
+          // CASE 2: Password does NOT match saved password
+          // User may have changed password on Stremio - try their password
+          const loginResult = await loginWithEmailPassword(trimmedEmail, trimmedPassword);
+          
+          if (!loginResult.ok) {
+            return { ok: false, error: loginResult.error };
+          }
+          
+          // Login successful - update saved account with new password and AuthKey
+          key = loginResult.authKey;
+          authKey.value = key;
+          emitAuthKey();
+          
+          // Update saved account
+          savedRef.value?.save?.({
+            email: trimmedEmail,
+            password: trimmedPassword,
+            authKey: key,
+            label: savedAccount.label || trimmedEmail,
+          });
+          
+          // Show toast notification
+          toastRef.value?.show({
+            message: 'Password updated for saved account.',
+            duration: 4000,
+          });
+          
+          // Verify the new AuthKey
+          const userResult = await getUserFromAuthKey(key);
+          if (!userResult.ok) {
+            return { ok: false, error: 'Failed to verify new AuthKey' };
+          }
+          
+          return { ok: true, emailFromKey: userResult.email, uid: userResult.uid, updatedPassword: true };
+        }
+      }
+      
+      // Email NOT in saved accounts OR saving disabled - normal login flow
+      const loginResult = await loginWithEmailPassword(trimmedEmail, trimmedPassword);
+      
+      if (!loginResult.ok) {
+        return { ok: false, error: loginResult.error };
+      }
+
+      key = loginResult.authKey;
+      authKey.value = key;
+      emitAuthKey();
+    }
+
+    if (!key) {
+      return { ok: false, error: 'No AuthKey available to verify' };
+    }
+
+    // Verify the AuthKey
+    const userResult = await getUserFromAuthKey(key);
+    
+    if (!userResult.ok) {
+      // AuthKey verification failed - try to recover
+      const trimmedEmail = email.value.trim();
+      const trimmedPassword = password.value.trim();
+      
+      // First, check if we have a saved account with this email that has a valid AuthKey
+      if (savingEnabled.value && trimmedEmail) {
+        const savedAccount = savedRef.value?.findByEmail?.(trimmedEmail);
+        if (savedAccount) {
+          const savedAuthKey = (savedAccount.authKey || '').trim();
+          
+          if (savedAuthKey && savedAuthKey !== key) {
+            console.log('Invalid AuthKey entered, trying saved AuthKey for this account...');
+            
+            const savedKeyResult = await getUserFromAuthKey(savedAuthKey);
+            
+            if (savedKeyResult.ok) {
+              // Saved AuthKey works - use it
+              authKey.value = savedAuthKey;
+              emitAuthKey();
+              return { ok: true, emailFromKey: savedKeyResult.email, uid: savedKeyResult.uid, usedSavedAuthKey: true };
+            }
+            
+            console.log('Saved AuthKey also invalid, will try email+password login...');
+          }
+        }
+      }
+      
+      // Saved AuthKey didn't work or doesn't exist - fall back to email+password if available
+      if (trimmedEmail && trimmedPassword) {
+        console.log('AuthKey verification failed, falling back to email+password login...');
+        
+        const loginResult = await loginWithEmailPassword(trimmedEmail, trimmedPassword);
+        
+        if (!loginResult.ok) {
+          return { ok: false, error: `AuthKey invalid and login failed: ${loginResult.error}` };
+        }
+        
+        // Login successful - update with new AuthKey
+        key = loginResult.authKey;
+        authKey.value = key;
+        emitAuthKey();
+        
+        // Update saved account if it exists
+        if (savingEnabled.value && trimmedEmail) {
+          const savedAccount = savedRef.value?.findByEmail?.(trimmedEmail);
+          if (savedAccount) {
+            savedRef.value?.updateAuthKeyForEmail?.(trimmedEmail, key);
+          }
+        }
+        
+        // Verify the new AuthKey
+        const newUserResult = await getUserFromAuthKey(key);
+        if (!newUserResult.ok) {
+          return { ok: false, error: 'Failed to verify new AuthKey after login' };
+        }
+        
+        return { ok: true, emailFromKey: newUserResult.email, uid: newUserResult.uid, recoveredFromInvalidAuthKey: true };
+      }
+      
+      // No email+password available to fall back to
+      return { ok: false, error: userResult.error };
+    }
+
+    return { ok: true, emailFromKey: userResult.email, uid: userResult.uid };
   } catch (err) {
     console.error('Verification failed:', err);
     return { ok: false, error: err?.message || 'Unknown error' };
@@ -346,18 +521,13 @@ async function handleLoadFlowWithSaving(emailFromKey, emailField) {
     const currentAuthKey = authKey.value.trim();
     
     if (existing) {
-      // Load from existing saved account
-      email.value = emailFromKey;
-      password.value = existing.password || '';
-      emits('user-email', emailFromKey);
-      
-      // Update authKey if different
+      // Update authKey in saved account if different
       if (existing.authKey !== currentAuthKey) {
         savedRef.value?.updateAuthKeyForEmail?.(emailFromKey, currentAuthKey);
       }
       
-      // Select the account in the dropdown
-      savedRef.value?.selectByEmail?.(emailFromKey, { silent: true });
+      // Select the account in the dropdown (watcher will update credentials)
+      savedRef.value?.selectByEmail?.(emailFromKey, { silent: false });
       
       const accountDisplay = savedRef.value?.formatAccountDisplay?.(existing, { quoted: true, bold: true }) || `"<strong>${emailFromKey}</strong>"`;
       
@@ -388,18 +558,13 @@ async function handleLoadFlowWithSaving(emailFromKey, emailField) {
     const existing = savedRef.value?.findByEmail?.(emailFromKey);
     
     if (existing) {
-      // Load from existing saved account
-      email.value = emailFromKey;
-      password.value = existing.password || '';
-      emits('user-email', emailFromKey);
-      
-      // Update authKey if different
+      // Update authKey in saved account if different
       if (existing.authKey !== currentAuthKey) {
         savedRef.value?.updateAuthKeyForEmail?.(emailFromKey, currentAuthKey);
       }
       
-      // Select the account in the dropdown
-      savedRef.value?.selectByEmail?.(emailFromKey, { silent: true });
+      // Select the account in the dropdown (watcher will update credentials)
+      savedRef.value?.selectByEmail?.(emailFromKey, { silent: false });
       
       const accountDisplay = savedRef.value?.formatAccountDisplay?.(existing, { quoted: true, bold: true }) || `"<strong>${emailFromKey}</strong>"`;
       
@@ -414,7 +579,7 @@ async function handleLoadFlowWithSaving(emailFromKey, emailField) {
       });
     } else {
       // New account - update email, clear password, offer to save
-      const originalEmail = emailField; // Capture before updating
+      const originalEmail = emailField;
       email.value = emailFromKey;
       password.value = '';
       emits('user-email', emailFromKey);
@@ -435,8 +600,8 @@ async function handleLoadFlowWithSaving(emailFromKey, emailField) {
       savedRef.value?.updateAuthKeyForEmail?.(emailFromKey, currentAuthKey);
     }
     
-    // Select the account in the dropdown
-    savedRef.value?.selectByEmail?.(emailFromKey, { silent: true });
+    // Select the account in the dropdown (watcher will update credentials)
+    savedRef.value?.selectByEmail?.(emailFromKey, { silent: false });
   } else {
     await promptSaveAccount(emailFromKey);
   }
@@ -549,7 +714,6 @@ defineExpose({ verifyCredentialsForLoad, handleLoadAddonsFlow, canLoadAddons, ge
     <SavedAccounts
       v-if="savingEnabled"
       ref="savedRef"
-      @selected="onSavedSelected"
     />
     
     <div class="separator"><strong>OR...</strong> Use your Stremio account (Facebook login is not supported)</div>
