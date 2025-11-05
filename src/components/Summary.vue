@@ -222,7 +222,7 @@ function togglePanel(id) {
           <p class="summary-accordion__title">{{ panel.title }}</p>
           <p class="summary-accordion__subtitle">{{ panel.subtitle }}</p>
         </div>
-        <i :class="['uil', isPanelOpen(panel.id) ? 'uil-angle-up' : 'uil-angle-down']"></i>
+        <i :class="isPanelOpen(panel.id) ? 'bi bi-chevron-up' : 'bi bi-chevron-down'"></i>
       </button>
       <transition name="summary-fade">
         <div v-if="isPanelOpen(panel.id)" class="summary-accordion__content">
