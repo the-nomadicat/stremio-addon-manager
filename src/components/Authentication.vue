@@ -500,7 +500,18 @@ async function promptSaveNewAccountWithUniqueId(emailForAccount, currentAuthKey,
   });
 }
 
-defineExpose({ verifyCredentialsForLoad, handleLoadAddonsFlow, canLoadAddons })
+function getSavedAccountInfo() {
+  if (!savingEnabled.value || !email.value) return null
+  return savedRef.value?.findByEmail?.(email.value)
+}
+
+function getFormattedAccountDisplay() {
+  const accountInfo = getSavedAccountInfo()
+  if (!accountInfo) return null
+  return savedRef.value?.formatAccountDisplay?.(accountInfo) || null
+}
+
+defineExpose({ verifyCredentialsForLoad, handleLoadAddonsFlow, canLoadAddons, getSavedAccountInfo, getFormattedAccountDisplay })
 </script>
 
 <template>

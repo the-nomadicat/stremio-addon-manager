@@ -117,8 +117,9 @@ function handleScroll() {
 
 function safeForFilename(s) {
   return (s || '')
-    .replace(/[^a-zA-Z0-9@.+-]+/g, '_')
-    .replace(/^_+|_+$/g, '')
+    .replace(/\s+/g, ' ')              // Normalize multiple spaces to single space
+    .replace(/[^a-zA-Z0-9@.+\[\] -]+/g, '_')  // Allow spaces, square brackets, hyphens
+    .replace(/^[_\s]+|[_\s]+$/g, '')   // Trim underscores and spaces from ends
     .slice(0, 80)
 }
 
@@ -132,10 +133,24 @@ async function backupConfig() {
   const payload = { addons: Array.isArray(addons.value) ? addons.value : [] }
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
 
-  const who = safeForFilename(currentEmail.value || 'no-email')
+  // Get formatted account display from SavedAccounts (uses same format as dropdown)
+  const formattedAccount = authRef.value?.getFormattedAccountDisplay?.()
+  const accountPart = formattedAccount || currentEmail.value || 'no-email'
+  
+  const safeAccount = safeForFilename(accountPart)
+  const siteName = 'stremio-addon-manager'
+  
+  // Use local time instead of UTC
   const now = new Date()
-  const ts = now.toISOString().slice(0, 19).replace('T', ' ').replace(/:/g, '-')
-  const filename = `stremio-addons-${who}-${ts}.json`
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  const hours = String(now.getHours()).padStart(2, '0')
+  const minutes = String(now.getMinutes()).padStart(2, '0')
+  const seconds = String(now.getSeconds()).padStart(2, '0')
+  const ts = `${year}-${month}-${day} ${hours}-${minutes}-${seconds}`
+  
+  const filename = `${safeAccount}-${siteName}-${ts}.json`
 
   try {
     // Try modern Web Share API first (works great on mobile)
