@@ -834,7 +834,7 @@ onUnmounted(() => {
                     <div class="left-actions">
                         <button type="button" class="button primary large icon" :class="{ 'pulse': needsSync }" :disabled="!needsSync" @click="syncUserAddons">
                             Sync to Stremio
-                            <img src="https://icongr.am/feather/loader.svg?size=16&amp;color=ffffff" alt="icon">
+                            <img src="/icons/loader-16-ffffff.svg" alt="icon">
                         </button>
                     </div>
                     <div class="right-actions">
