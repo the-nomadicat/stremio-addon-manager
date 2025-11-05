@@ -247,7 +247,7 @@ function restoreFromFile(e) {
   
   const reader = new FileReader()
   
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const data = JSON.parse(String(reader.result || '{}'))
       
@@ -257,14 +257,38 @@ function restoreFromFile(e) {
       
       if (Array.isArray(data.addons)) {
         const addonCount = data.addons.length
+        
+        // If we haven't loaded from Stremio yet and we have auth credentials,
+        // silently fetch the current state to use as our baseline for comparison
+        if (originalAddons.value === null && stremioAuthKey.value) {
+          const stremioAddons = await silentlyFetchStremioAddons()
+          if (stremioAddons !== null) {
+            // Store Stremio's current state without updating the UI
+            originalAddons.value = stremioAddons
+          }
+        }
+        
+        // Now restore the backup
         addons.value = data.addons
         
         // Check if restored state differs from original (enable Sync button)
         checkIfModified()
         
+        // Provide informative message based on comparison
+        let message = `Successfully restored ${addonCount} addon${addonCount !== 1 ? 's' : ''}`
+        
+        if (originalAddons.value === null) {
+          // No auth key or silent fetch failed - can't compare
+          message += '. Sign in and load addons to see if syncing is needed.'
+        } else if (needsSync.value) {
+          message += '. Click "Sync to Stremio" to apply changes.'
+        } else {
+          message += '. Your Stremio account already has these addons.'
+        }
+        
         toastRef.value?.show({
-          message: `Successfully restored ${addonCount} addon${addonCount !== 1 ? 's' : ''}`,
-          duration: 3000,
+          message: message,
+          duration: 5000,
         })
       } else {
         toastRef.value?.show({
@@ -311,9 +335,46 @@ function restoreFromFile(e) {
   }
 }
 
-/* ===============================
-   Existing logic
-================================ */
+async function fetchStremioAddons() {
+  // Core fetch logic - reusable by both silent and UI operations
+  // Returns { success: boolean, addons: array, error: string }
+  const key = stremioAuthKey.value
+  if (!key) {
+    return { success: false, addons: [], error: 'No auth key available' }
+  }
+
+  const url = `${stremioAPIBase}addonCollectionGet`
+
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify({
+        type: 'AddonCollectionGet',
+        authKey: key,
+        update: true,
+      })
+    })
+
+    const data = await resp.json()
+
+    if (!resp.ok || !('result' in data) || data.result == null) {
+      return { success: false, addons: [], error: 'Failed to fetch addons from Stremio' }
+    }
+
+    return { success: true, addons: data.result.addons || [], error: null }
+  } catch (error) {
+    console.error('Fetch error:', error)
+    return { success: false, addons: [], error: error.message || 'Network error' }
+  }
+}
+
+async function silentlyFetchStremioAddons() {
+  // Fetch current addons from Stremio without updating UI
+  // Returns the addons array or null if failed
+  const result = await fetchStremioAddons()
+  return result.success ? result.addons : null
+}
+
 async function loadUserAddons() {
     // First, verify credentials using the comprehensive flow
     const verificationResult = await authRef.value?.handleLoadAddonsFlow?.();
@@ -327,58 +388,26 @@ async function loadUserAddons() {
         });
         return;
     }
-    
-    const key = stremioAuthKey.value
-    if (!key) {
-        console.error('No auth key provided')
-        await dialog.alert({
-            title: 'Failed to load addons',
-            htmlMessage: 'No AuthKey available. Please verify your credentials first.',
-            confirmText: 'OK',
-        });
-        return
-    }
 
     isLoadingAddons.value = true
 
-    const url = `${stremioAPIBase}addonCollectionGet`
+    const result = await fetchStremioAddons()
 
-    try {
-        const resp = await fetch(url, {
-            method: 'POST',
-            body: JSON.stringify({
-                type: 'AddonCollectionGet',
-                authKey: key,
-                update: true,
-            })
-        })
-
-        const data = await resp.json()
-
-        if (!resp.ok || !('result' in data) || data.result == null) {
-            console.error('Failed to fetch user addons: ', data)
-            await dialog.alert({
-                title: 'Failed to load addons',
-                htmlMessage: 'Could not fetch user addons. Please confirm the Stremio AuthKey is correct and try again.',
-                confirmText: 'OK',
-            })
-            return
-        }
-
-        addons.value = data.result.addons
-        hasLoadedAddons.value = true
-        // Save the original state and clear sync flag
-        saveOriginalState()
-    } catch (error) {
-        console.error('Error fetching user addons', error)
+    if (!result.success) {
         await dialog.alert({
-            title: 'Network error',
-            htmlMessage: 'Something went wrong while connecting to Stremio. Please try again in a moment.',
-            confirmText: 'Dismiss',
+            title: 'Failed to load addons',
+            htmlMessage: result.error || 'Could not fetch user addons. Please confirm the Stremio AuthKey is correct and try again.',
+            confirmText: 'OK',
         })
-    } finally {
         isLoadingAddons.value = false
+        return
     }
+
+    addons.value = result.addons
+    hasLoadedAddons.value = true
+    // Save the original state and clear sync flag
+    saveOriginalState()
+    isLoadingAddons.value = false
 }
 
 async function syncUserAddons() {
