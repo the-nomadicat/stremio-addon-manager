@@ -785,10 +785,10 @@ onUnmounted(() => {
                     </div>
                     <div class="right-actions">
                          <button v-if="addons.length" type="button" class="button" @click="backupConfig" title="Export config to file">
-                            <i class="uil uil-export" style="margin-right:.35rem;"></i> Backup
+                            <i class="bi bi-download" style="margin-right:.35rem;"></i> Backup
                         </button>
                         <button type="button" class="button" @click="triggerRestore" title="Import config from file">
-                            <i class="uil uil-import" style="margin-right:.35rem;"></i> Restore…
+                            <i class="bi bi-upload" style="margin-right:.35rem;"></i> Restore…
                         </button>
                         <input
                             ref="restoreInput"

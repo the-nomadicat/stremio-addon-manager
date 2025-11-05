@@ -55,7 +55,7 @@ defineExpose({ show, remove })
         @click="handleUndo(toast)"
         type="button"
       >
-        <i class="uil uil-undo"></i>
+        <i class="bi bi-arrow-counterclockwise"></i>
         Undo
       </button>
     </div>
