@@ -141,12 +141,14 @@ async function handleSavingToggle(nextEnabled) {
 
 function onEmailInput() {
   resetSavedSelection()
+  clearAuthKey()
   emits('user-email', email.value)
   emits('reset-addons')
 }
 
 function onPasswordInput() {
   resetSavedSelection()
+  clearAuthKey()
   emits('reset-addons')
 }
 
@@ -428,9 +430,13 @@ async function handleLoadFlowWithSaving(emailFromKey, emailField) {
   const currentAuthKey = authKey.value.trim();
   
   if (existing) {
+    // Update authKey if different
     if (existing.authKey !== currentAuthKey) {
       savedRef.value?.updateAuthKeyForEmail?.(emailFromKey, currentAuthKey);
     }
+    
+    // Select the account in the dropdown
+    savedRef.value?.selectByEmail?.(emailFromKey, { silent: true });
   } else {
     await promptSaveAccount(emailFromKey);
   }
