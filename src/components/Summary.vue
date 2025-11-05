@@ -44,8 +44,23 @@ const spotlightSections = [
         status: 'core'
       },
       {
+        title: 'Install new addons',
+        copy: 'Add new addons to your collection by entering their manifest URL. The tool validates the URL and confirms before installation.',
+        status: 'new'
+      },
+      {
+        title: 'Find catalogs quickly',
+        copy: 'Search across all your addons to find specific catalogs by name. The tool highlights matches and lets you jump directly to them for editing.',
+        status: 'new'
+      },
+      {
         title: 'Per-addon catalog editor',
-        copy: 'Open an addon’s editor to rename both the addon and its catalogs, delete catalogs you don’t want, and drag them into the order you prefer — without touching JSON.',
+        copy: 'Open an addon\'s editor to rename both the addon and its catalogs, delete catalogs you don\'t want, and drag them into the order you prefer — without touching JSON.',
+        status: 'new'
+      },
+      {
+        title: 'Reset individual addons',
+        copy: 'Restore an addon to its original manifest configuration if you\'ve made changes you want to undo, without affecting other addons.',
         status: 'new'
       },
       {
@@ -55,7 +70,12 @@ const spotlightSections = [
       },
       {
         title: 'Hide Cinemeta on Home screen',
-        copy: 'You can now hide the default Cinemeta catalogs without uninstalling the Cinemeta addon — something Stremio doesn’t support natively.',
+        copy: 'You can now hide the default Cinemeta catalogs without uninstalling the Cinemeta addon — something Stremio doesn\'t support natively.',
+        status: 'new'
+      },
+      {
+        title: 'Smart visual feedback',
+        copy: 'Get clear indicators when you have unsaved changes in the addon editor, when changes need to be synced to Stremio, and easy access to sync controls that stay visible while scrolling.',
         status: 'new'
       }
     ]
@@ -86,9 +106,13 @@ const workflowSteps = [
     title: 'Edit & Reorder',
     items: [
       'Reorder addons by dragging their handles. This affects which sources and catalogs show up first in Stremio.',
-      'Open an addon’s editor to rename both the addon and its catalogs, delete catalogs you don’t need, and drag them into a better order — no manual JSON required.',
-      'Toggle the Home icon on any catalog to show or hide that row on Stremio’s Home screen.',
-      'Review the updated configuration, so you’re happy with what will surface first, and what catalogs are hidden on the Home screen.'
+      'Use "Add Addon..." to install new addons by entering their manifest URL.',
+      'Use "Find Catalog" to search across all addons and quickly locate specific catalogs.',
+      'Open an addon\'s editor to rename both the addon and its catalogs, delete catalogs you don\'t need, and drag them into a better order — no manual JSON required.',
+      'Use the "Reset Addon" button in the editor if you want to restore an addon to its original configuration.',
+      'Toggle the Home icon on any catalog to show or hide that row on Stremio\'s Home screen.',
+      'Review the updated configuration, so you\'re happy with what will surface first, and what catalogs are hidden on the Home screen.',
+      'The Save button in the addon editor will indicate when you have unsaved changes.'
     ]
   },
   {
@@ -96,6 +120,7 @@ const workflowSteps = [
     title: 'Sync to Stremio',
     items: [
       'Check everything one last time: the addons order, and within an addon also check the catalog names, their order, and which catalogs are visible on the Home screen.',
+      'The "Sync to Stremio" button will highlight when you have changes that need to be synced.',
       'Click "Sync to Stremio" to apply the new layout to the currently signed-in account.',
       'If you don\'t like the result, use the backup from Step 2 and restore it.'
     ]
