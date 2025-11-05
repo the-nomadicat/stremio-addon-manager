@@ -61,7 +61,7 @@
                                 <div class="catalog-item" :key="element.__dragKey">
                                     <div class="catalog-controls-left">
                                         <span class="drag-handle" aria-label="Reorder catalog">
-                                            <img src="https://icongr.am/feather/move.svg?size=24" alt="" aria-hidden="true" />
+                                            <img src="/icons/move-24-000000.svg" alt="" aria-hidden="true" />
                                         </span>
                                         <!-- Visibility toggle indicator(s) -->
                                         <span 
@@ -73,9 +73,9 @@
                                             :title="getVisibilityTitle(element)"
                                             @click="catalogHasControllingExtra(element) ? toggleCatalogVisibility(element) : null"
                                         >
-                                            <img v-if="hasSearchExtra(element)" src="https://icongr.am/feather/home.svg?size=20" alt="" aria-hidden="true" class="icon-home" />
-                                            <img v-if="hasSearchExtra(element)" src="https://icongr.am/feather/compass.svg?size=20" alt="" aria-hidden="true" class="icon-discover" />
-                                            <img v-if="!hasSearchExtra(element) && hasGenreExtra(element)" src="https://icongr.am/feather/home.svg?size=24" alt="" aria-hidden="true" />
+                                            <img v-if="hasSearchExtra(element)" src="/icons/home-20-000000.svg" alt="" aria-hidden="true" class="icon-home" />
+                                            <img v-if="hasSearchExtra(element)" src="/icons/compass-20-000000.svg" alt="" aria-hidden="true" class="icon-discover" />
+                                            <img v-if="!hasSearchExtra(element) && hasGenreExtra(element)" src="/icons/home-24-000000.svg" alt="" aria-hidden="true" />
                                         </span>
                                         <label :for="'catalog-' + element.type" class="catalog-type-label">
                                             {{ element.type }}
@@ -94,7 +94,7 @@
                                             :class="{ 'delete-hidden': !catalogHasControllingExtra(element) }"
                                             @click="handleDeleteCatalog(element, index)"
                                         >
-                                            <img src="https://icongr.am/feather/trash-2.svg?size=16" alt="Delete Catalog" />
+                                            <img src="/icons/trash-2-16-000000.svg" alt="Delete Catalog" />
                                         </button>
                                     </div>
                                 </div>

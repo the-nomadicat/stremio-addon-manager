@@ -267,12 +267,12 @@ defineExpose({
         :disabled="selectedEmail === DEFAULT_EMAIL"
         @click="renameSelected"
       >
-        <img src="https://icongr.am/feather/edit.svg?size=12" alt="Edit">
+        <img src="/icons/edit-12-000000.svg" alt="Edit">
       </button>
       <button type="button" class="sam-button sam-button-delete" title="Delete selected" 
         :disabled="selectedEmail === DEFAULT_EMAIL"
         @click="removeSelected">
-        <img src="https://icongr.am/feather/trash-2.svg?size=12" alt="Delete">
+        <img src="/icons/trash-2-12-000000.svg" alt="Delete">
       </button>
     </div>
   </div>

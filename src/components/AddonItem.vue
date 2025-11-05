@@ -32,7 +32,7 @@
   
   const emits = defineEmits(['delete-addon', 'edit-addon', 'show-toast'])
   
-  const defaultLogo = 'https://icongr.am/feather/box.svg?size=48&color=ffffff'
+  const defaultLogo = '/icons/box-48-ffffff.svg'
   
   async function copyManifestURLToClipboard() {
     try {
@@ -168,24 +168,24 @@
         <button class="button icon-only visit-url" title="Open addon configuration page in new window"
           :disabled="!isConfigurable" 
           @click="openAddonConfigurationPage" @mousedown.stop @touchstart.stop>
-          <img src="https://icongr.am/feather/arrow-up-right.svg?size=12">
+          <img src="/icons/arrow-up-right-12-000000.svg">
         </button>
         <button class="button icon-only copy-url" title="Copy addon manifest URL to clipboard"
           @click="copyManifestURLToClipboard" @mousedown.stop @touchstart.stop>
-          <img src="https://icongr.am/feather/clipboard.svg?size=12">
+          <img src="/icons/clipboard-12-000000.svg">
         </button>
         <button class="button icon-only edit-addon" title="Edit addon" 
           @click="openEditManifestModal" @mousedown.stop @touchstart.stop>
-          <img src="https://icongr.am/feather/edit.svg?size=12">
+          <img src="/icons/edit-12-000000.svg">
         </button>
         <button class="button icon-only delete" title="Remove addon from list" 
           :disabled="!isDeletable"
           @click="removeAddon" @mousedown.stop @touchstart.stop>
-          <img src="https://icongr.am/feather/trash-2.svg?size=12">
+          <img src="/icons/trash-2-12-000000.svg">
         </button>
       </div>
       <span class="drag-handle" aria-label="Reorder addon">
-        <img src="https://icongr.am/feather/move.svg?size=32" alt="" aria-hidden="true" />
+        <img src="/icons/move-32-000000.svg" alt="" aria-hidden="true" />
       </span>
     </div>
   </div>
