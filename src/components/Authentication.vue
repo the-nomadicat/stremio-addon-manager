@@ -616,7 +616,7 @@ async function promptSaveAccount(emailForAccount) {
     htmlMessage: `Add a name for this account (optional). If left blank, the email will be used.`
               + `<br><br>Email: <strong>${emailToSave}</strong>`,
     defaultValue: '',
-    placeholder: emailToSave,
+    placeholder: 'e.g. Mum, Sister, Friend...',
     confirmText: 'Save login',
     cancelText: 'Skip',
   });
@@ -653,7 +653,7 @@ async function promptSaveNewAccountWithUniqueId(emailForAccount, currentAuthKey,
     title: 'Save new account?',
     htmlMessage: htmlMessage,
     defaultValue: '',
-    placeholder: emailForAccount,
+    placeholder: 'e.g. Mum, Sister, Friend...',
     confirmText: 'Save login',
     cancelText: 'Skip',
   });
