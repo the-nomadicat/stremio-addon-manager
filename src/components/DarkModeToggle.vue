@@ -1,3 +1,9 @@
+<template>
+    <h1 class="pull-right" style="margin: 0;">
+        <a @click="toggleMode">{{ toggleIcon }}</a>
+    </h1>
+</template>
+
 <script setup>
 import { ref, onMounted } from 'vue'
 
@@ -39,9 +45,3 @@ onMounted(() => {
     }
 })
 </script>
-
-<template>
-    <h1 class="pull-right" style="margin: 0;">
-        <a @click="toggleMode">{{ toggleIcon }}</a>
-    </h1>
-</template>

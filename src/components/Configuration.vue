@@ -1,3 +1,161 @@
+<template>
+    <section id="configure">
+        <h2>Configure Stremio</h2>
+        <form onsubmit="return false;">
+            <fieldset>
+                <Authentication
+                    ref="authRef"
+                    :stremioAPIBase="stremioAPIBase"
+                    @auth-key="setAuthKey"
+                    @user-email="setUserEmail"
+                    @reset-addons="resetAddons"
+                />
+            </fieldset>
+
+            <fieldset id="form_step1">
+                <legend>Step 2: Load Addons / Backup</legend>
+                <div v-if="authRef?.canLoadAddons" class="action-row">
+                    <div class="left-actions">
+                        <button class="button primary" @click="loadUserAddons">
+                            {{ loadAddonsButtonText }}
+                        </button>
+                        <button v-if="addons.length" type="button" class="button danger" @click="clearAddons" title="Clear all addons">
+                            Clear Addons
+                        </button>
+                    </div>
+                    <div class="right-actions">
+                         <button v-if="addons.length" type="button" class="button" @click="backupConfig" title="Export config to file">
+                            <i class="bi bi-download" style="margin-right:.35rem;"></i> Backup
+                        </button>
+                        <button type="button" class="button" @click="triggerRestore" title="Import config from file">
+                            <i class="bi bi-upload" style="margin-right:.35rem;"></i> Restore…
+                        </button>
+                        <input
+                            ref="restoreInput"
+                            type="file"
+                            accept="application/json"
+                            style="display:none"
+                            @change="restoreFromFile"
+                        />
+                    </div>
+                </div>
+                <p v-else class="empty-state">Authenticate above via "Step 1: Authenticate" to load, backup, or restore addons.</p>
+            </fieldset>
+
+            <fieldset id="form_step2">
+                <legend>Step 3: Edit/Re-Order Addons & Catalogs</legend>
+                
+                <!-- Find Catalog Button -->
+                <div v-if="addons.length" class="find-catalog-section">
+                    <button type="button" class="button find-catalog-button" @click="openSearchWidget">
+                        Find Catalogs
+                    </button>
+                </div>
+                
+                <draggable v-if="addons.length" :list="addons" item-key="transportUrl" class="sortable-list" ghost-class="ghost"
+                    handle=".drag-handle"
+                    @start="dragging = true" @end="handleDragEnd">
+                    <template #item="{ element, index }">
+                        <AddonItem :name="element.manifest.name" :idx="index" :manifestURL="element.transportUrl"
+                            :logoURL="element.manifest.logo"
+                            :isDeletable="!getNestedObjectProperty(element, 'flags.protected', false)"
+                            :isConfigurable="getNestedObjectProperty(element, 'manifest.behaviorHints.configurable', false)"
+                            @delete-addon="removeAddon"
+                            @edit-addon="openEditAddon"
+                            @show-toast="handleToast" />
+                    </template>
+                </draggable>
+                <p v-else-if="stremioAuthKey" class="empty-state">No addons loaded! Load addons or restore a configuration above to start editing them.</p>
+            </fieldset>
+
+            <fieldset id="form_step3">
+                <legend>Step 4: Sync Addons</legend>
+                <div v-if="addons.length" ref="controlsRef" class="action-row sticky-controls" :class="{ 'controls-fixed': controlsFixed }">
+                    <div class="left-actions">
+                        <button type="button" class="button primary large icon" :class="{ 'pulse': needsSync }" :disabled="!needsSync" @click="syncUserAddons">
+                            Sync to Stremio
+                            <img src="/icons/loader-16-ffffff.svg" alt="icon">
+                        </button>
+                    </div>
+                    <div class="right-actions">
+                        <button type="button" class="button install" @click="installAddon">
+                            Add Addon...
+                        </button>
+                    </div>
+                </div>
+                <p v-else-if="stremioAuthKey" class="empty-state">Load addons or restore a configuration above to enable syncing.</p>
+            </fieldset>
+        </form>
+        
+        <!-- Teleport Toast to body but keep within single root element -->
+        <Teleport to="body">
+            <Toast ref="toastRef" />
+        </Teleport>
+    </section>
+
+    <!-- Catalog Search Widget -->
+    <div v-if="showSearchWidget" class="search-widget-overlay">
+        <div class="search-widget" :key="searchWidgetAnimationKey">
+            <div class="search-widget-header">
+                <input
+                    ref="searchInputRef"
+                    v-model="catalogSearchQuery"
+                    type="text"
+                    placeholder="Search catalogs by name or type..."
+                    class="search-widget-input"
+                    @input="handleSearchInput"
+                />
+                <button 
+                    type="button" 
+                    class="close-btn" 
+                    @click="closeSearchWidget"
+                    title="Close search"
+                >
+                    ✕
+                </button>
+            </div>
+            
+            <div v-if="catalogMatchCount > 0" class="search-widget-controls">
+                <button 
+                    type="button" 
+                    class="nav-btn" 
+                    @click="findPrevious"
+                    title="Previous match"
+                    :disabled="catalogMatchCount <= 1"
+                >
+                    ◀
+                </button>
+                <span class="match-display">{{ catalogMatchDisplay }}</span>
+                <button 
+                    type="button" 
+                    class="nav-btn" 
+                    @click="findNext"
+                    title="Next match"
+                    :disabled="catalogMatchCount <= 1"
+                >
+                    ▶
+                </button>
+            </div>
+            
+            <div v-else-if="catalogSearchQuery.trim()" class="search-widget-no-results">
+                No matches found
+            </div>
+        </div>
+    </div>
+
+    <div v-if="isEditModalVisible" class="modal">
+        <div class="modal-content">
+            <DynamicForm 
+                :manifest="currentManifest" 
+                :manifestURL="currentManifestURL"
+                :highlightCatalog="highlightCatalogInfo"
+                @update-manifest="saveManifestEdit" 
+                @cancel="closeEditModal"
+            />
+        </div>
+    </div>
+</template>
+
 <script setup>
 import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import draggable from 'vuedraggable'
@@ -801,164 +959,6 @@ onUnmounted(() => {
     }
 })
 </script>
-
-<template>
-    <section id="configure">
-        <h2>Configure Stremio</h2>
-        <form onsubmit="return false;">
-            <fieldset>
-                <Authentication
-                    ref="authRef"
-                    :stremioAPIBase="stremioAPIBase"
-                    @auth-key="setAuthKey"
-                    @user-email="setUserEmail"
-                    @reset-addons="resetAddons"
-                />
-            </fieldset>
-
-            <fieldset id="form_step1">
-                <legend>Step 2: Load Addons / Backup</legend>
-                <div v-if="authRef?.canLoadAddons" class="action-row">
-                    <div class="left-actions">
-                        <button class="button primary" @click="loadUserAddons">
-                            {{ loadAddonsButtonText }}
-                        </button>
-                        <button v-if="addons.length" type="button" class="button danger" @click="clearAddons" title="Clear all addons">
-                            Clear Addons
-                        </button>
-                    </div>
-                    <div class="right-actions">
-                         <button v-if="addons.length" type="button" class="button" @click="backupConfig" title="Export config to file">
-                            <i class="bi bi-download" style="margin-right:.35rem;"></i> Backup
-                        </button>
-                        <button type="button" class="button" @click="triggerRestore" title="Import config from file">
-                            <i class="bi bi-upload" style="margin-right:.35rem;"></i> Restore…
-                        </button>
-                        <input
-                            ref="restoreInput"
-                            type="file"
-                            accept="application/json"
-                            style="display:none"
-                            @change="restoreFromFile"
-                        />
-                    </div>
-                </div>
-                <p v-else class="empty-state">Authenticate above via "Step 1: Authenticate" to load, backup, or restore addons.</p>
-            </fieldset>
-
-            <fieldset id="form_step2">
-                <legend>Step 3: Edit/Re-Order Addons & Catalogs</legend>
-                
-                <!-- Find Catalog Button -->
-                <div v-if="addons.length" class="find-catalog-section">
-                    <button type="button" class="button find-catalog-button" @click="openSearchWidget">
-                        Find Catalogs
-                    </button>
-                </div>
-                
-                <draggable v-if="addons.length" :list="addons" item-key="transportUrl" class="sortable-list" ghost-class="ghost"
-                    handle=".drag-handle"
-                    @start="dragging = true" @end="handleDragEnd">
-                    <template #item="{ element, index }">
-                        <AddonItem :name="element.manifest.name" :idx="index" :manifestURL="element.transportUrl"
-                            :logoURL="element.manifest.logo"
-                            :isDeletable="!getNestedObjectProperty(element, 'flags.protected', false)"
-                            :isConfigurable="getNestedObjectProperty(element, 'manifest.behaviorHints.configurable', false)"
-                            @delete-addon="removeAddon"
-                            @edit-addon="openEditAddon"
-                            @show-toast="handleToast" />
-                    </template>
-                </draggable>
-                <p v-else-if="stremioAuthKey" class="empty-state">No addons loaded! Load addons or restore a configuration above to start editing them.</p>
-            </fieldset>
-
-            <fieldset id="form_step3">
-                <legend>Step 4: Sync Addons</legend>
-                <div v-if="addons.length" ref="controlsRef" class="action-row sticky-controls" :class="{ 'controls-fixed': controlsFixed }">
-                    <div class="left-actions">
-                        <button type="button" class="button primary large icon" :class="{ 'pulse': needsSync }" :disabled="!needsSync" @click="syncUserAddons">
-                            Sync to Stremio
-                            <img src="/icons/loader-16-ffffff.svg" alt="icon">
-                        </button>
-                    </div>
-                    <div class="right-actions">
-                        <button type="button" class="button install" @click="installAddon">
-                            Add Addon...
-                        </button>
-                    </div>
-                </div>
-                <p v-else-if="stremioAuthKey" class="empty-state">Load addons or restore a configuration above to enable syncing.</p>
-            </fieldset>
-        </form>
-        
-        <!-- Teleport Toast to body but keep within single root element -->
-        <Teleport to="body">
-            <Toast ref="toastRef" />
-        </Teleport>
-    </section>
-
-    <!-- Catalog Search Widget -->
-    <div v-if="showSearchWidget" class="search-widget-overlay">
-        <div class="search-widget" :key="searchWidgetAnimationKey">
-            <div class="search-widget-header">
-                <input
-                    ref="searchInputRef"
-                    v-model="catalogSearchQuery"
-                    type="text"
-                    placeholder="Search catalogs by name or type..."
-                    class="search-widget-input"
-                    @input="handleSearchInput"
-                />
-                <button 
-                    type="button" 
-                    class="close-btn" 
-                    @click="closeSearchWidget"
-                    title="Close search"
-                >
-                    ✕
-                </button>
-            </div>
-            
-            <div v-if="catalogMatchCount > 0" class="search-widget-controls">
-                <button 
-                    type="button" 
-                    class="nav-btn" 
-                    @click="findPrevious"
-                    title="Previous match"
-                    :disabled="catalogMatchCount <= 1"
-                >
-                    ◀
-                </button>
-                <span class="match-display">{{ catalogMatchDisplay }}</span>
-                <button 
-                    type="button" 
-                    class="nav-btn" 
-                    @click="findNext"
-                    title="Next match"
-                    :disabled="catalogMatchCount <= 1"
-                >
-                    ▶
-                </button>
-            </div>
-            
-            <div v-else-if="catalogSearchQuery.trim()" class="search-widget-no-results">
-                No matches found
-            </div>
-        </div>
-    </div>
-
-    <div v-if="isEditModalVisible" class="modal">
-        <div class="modal-content">
-            <DynamicForm 
-                :manifest="currentManifest" 
-                :manifestURL="currentManifestURL"
-                :highlightCatalog="highlightCatalogInfo"
-                @update-manifest="saveManifestEdit" 
-                @cancel="closeEditModal"
-            />
-        </div>
-    </div>
-</template>
 
 <style scoped>
 .sortable-list {

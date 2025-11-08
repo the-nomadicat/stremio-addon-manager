@@ -1,3 +1,79 @@
+<template>
+  <section id="summary" class="summary">
+    <section
+      v-for="panel in accordionPanels"
+      :key="panel.id"
+      class="summary-accordion"
+    >
+      <button
+        type="button"
+        class="summary-accordion__toggle"
+        :aria-expanded="isPanelOpen(panel.id)"
+        @click="togglePanel(panel.id)"
+      >
+        <div class="summary-accordion__copy">
+          <p class="summary-accordion__title">{{ panel.title }}</p>
+          <p class="summary-accordion__subtitle">{{ panel.subtitle }}</p>
+        </div>
+        <i :class="isPanelOpen(panel.id) ? 'bi bi-chevron-up' : 'bi bi-chevron-down'"></i>
+      </button>
+      <transition name="summary-fade">
+        <div v-if="isPanelOpen(panel.id)" class="summary-accordion__content">
+          <template v-if="panel.kind === 'spotlights'">
+            <div class="summary-panel__header summary-panel__header--inline">
+            </div>
+            <div
+              v-for="section in spotlightSections"
+              :key="section.id"
+              class="summary-spotlight-section"
+            >
+              <div class="summary-spotlight-section__header">
+                <h4>{{ section.title }}</h4>
+              </div>
+              <div class="summary-chips summary-chips--spotlight">
+                <article
+                  v-for="feature in section.features"
+                  :key="feature.title"
+                  :class="['summary-chip', { 'summary-chip--new': feature.status === 'new' }]"
+                >
+                  <div class="summary-chip__heading">
+                    <h4 class="summary-chip__title">{{ feature.title }}</h4>
+                    <span v-if="feature.status === 'new'" class="summary-chip__badge">New</span>
+                  </div>
+                  <p>{{ feature.copy }}</p>
+                </article>
+              </div>
+            </div>
+          </template>
+          <template v-else-if="panel.kind === 'workflow'">
+            <div class="summary-panel__header summary-panel__header--inline">
+            </div>
+            <div class="summary-steps">
+              <article v-for="step in workflowSteps" :key="step.step" class="summary-step">
+                <h4><span>{{ step.step }}</span>{{ step.title }}</h4>
+                <p v-if="step.copy">{{ step.copy }}</p>
+                <ul v-else class="summary-step__list">
+                  <li v-for="item in step.items" :key="item" v-html="item"></li>
+                </ul>
+              </article>
+            </div>
+            <div class="summary-deep summary-deep--inline">
+              <h3>Summary</h3>
+              <article v-for="section in deepDiveSections" :key="section.title" class="summary-deep__block">
+                <h5>{{ section.title }}</h5>
+                <p>{{ section.content }}</p>
+              </article>
+              <p class="summary-disclaimer">
+                Unofficial tool. Not affiliated with Stremio. Use it at your own risk.
+              </p>
+            </div>
+          </template>
+        </div>
+      </transition>
+    </section>
+  </section>
+</template>
+
 <script setup>
 import { ref } from 'vue'
 
@@ -204,82 +280,6 @@ function togglePanel(id) {
   }
 }
 </script>
-
-<template>
-  <section id="summary" class="summary">
-    <section
-      v-for="panel in accordionPanels"
-      :key="panel.id"
-      class="summary-accordion"
-    >
-      <button
-        type="button"
-        class="summary-accordion__toggle"
-        :aria-expanded="isPanelOpen(panel.id)"
-        @click="togglePanel(panel.id)"
-      >
-        <div class="summary-accordion__copy">
-          <p class="summary-accordion__title">{{ panel.title }}</p>
-          <p class="summary-accordion__subtitle">{{ panel.subtitle }}</p>
-        </div>
-        <i :class="isPanelOpen(panel.id) ? 'bi bi-chevron-up' : 'bi bi-chevron-down'"></i>
-      </button>
-      <transition name="summary-fade">
-        <div v-if="isPanelOpen(panel.id)" class="summary-accordion__content">
-          <template v-if="panel.kind === 'spotlights'">
-            <div class="summary-panel__header summary-panel__header--inline">
-            </div>
-            <div
-              v-for="section in spotlightSections"
-              :key="section.id"
-              class="summary-spotlight-section"
-            >
-              <div class="summary-spotlight-section__header">
-                <h4>{{ section.title }}</h4>
-              </div>
-              <div class="summary-chips summary-chips--spotlight">
-                <article
-                  v-for="feature in section.features"
-                  :key="feature.title"
-                  :class="['summary-chip', { 'summary-chip--new': feature.status === 'new' }]"
-                >
-                  <div class="summary-chip__heading">
-                    <h4 class="summary-chip__title">{{ feature.title }}</h4>
-                    <span v-if="feature.status === 'new'" class="summary-chip__badge">New</span>
-                  </div>
-                  <p>{{ feature.copy }}</p>
-                </article>
-              </div>
-            </div>
-          </template>
-          <template v-else-if="panel.kind === 'workflow'">
-            <div class="summary-panel__header summary-panel__header--inline">
-            </div>
-            <div class="summary-steps">
-              <article v-for="step in workflowSteps" :key="step.step" class="summary-step">
-                <h4><span>{{ step.step }}</span>{{ step.title }}</h4>
-                <p v-if="step.copy">{{ step.copy }}</p>
-                <ul v-else class="summary-step__list">
-                  <li v-for="item in step.items" :key="item" v-html="item"></li>
-                </ul>
-              </article>
-            </div>
-            <div class="summary-deep summary-deep--inline">
-              <h3>Summary</h3>
-              <article v-for="section in deepDiveSections" :key="section.title" class="summary-deep__block">
-                <h5>{{ section.title }}</h5>
-                <p>{{ section.content }}</p>
-              </article>
-              <p class="summary-disclaimer">
-                Unofficial tool. Not affiliated with Stremio. Use it at your own risk.
-              </p>
-            </div>
-          </template>
-        </div>
-      </transition>
-    </section>
-  </section>
-</template>
 
 <style scoped>
 

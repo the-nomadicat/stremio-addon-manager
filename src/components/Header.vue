@@ -1,3 +1,14 @@
+<template>
+  <div class="hero">
+    <div class="logo is-center is-vertical-align">
+      <img v-if="addonLogo" :src="addonLogo" alt="Addon logo" />
+      <h1 v-else>{{ addonName }}</h1>
+      <h3>{{ addonSummary }}</h3>
+      <small><em>{{ addonTagline }}</em></small>
+    </div>
+  </div>
+</template>
+
 <script setup>
 defineProps({
   addonName: {
@@ -18,17 +29,6 @@ defineProps({
   }
 })
 </script>
-
-<template>
-  <div class="hero">
-    <div class="logo is-center is-vertical-align">
-      <img v-if="addonLogo" :src="addonLogo" alt="Addon logo" />
-      <h1 v-else>{{ addonName }}</h1>
-      <h3>{{ addonSummary }}</h3>
-      <small><em>{{ addonTagline }}</em></small>
-    </div>
-  </div>
-</template>
 
 <style scoped>
 .logo {

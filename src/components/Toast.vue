@@ -1,3 +1,24 @@
+<template>
+  <div class="toast-container">
+    <div
+      v-for="toast in toasts"
+      :key="toast.id"
+      class="toast"
+    >
+      <span class="toast-message">{{ toast.message }}</span>
+      <button
+        v-if="toast.onUndo"
+        class="toast-undo"
+        @click="handleUndo(toast)"
+        type="button"
+      >
+        <i class="bi bi-arrow-counterclockwise"></i>
+        Undo
+      </button>
+    </div>
+  </div>
+</template>
+
 <script setup>
 import { ref, computed } from 'vue'
 
@@ -41,27 +62,6 @@ function handleUndo(toast) {
 defineExpose({ show, remove })
 </script>
 
-<template>
-  <div class="toast-container">
-    <div
-      v-for="toast in toasts"
-      :key="toast.id"
-      class="toast"
-    >
-      <span class="toast-message">{{ toast.message }}</span>
-      <button
-        v-if="toast.onUndo"
-        class="toast-undo"
-        @click="handleUndo(toast)"
-        type="button"
-      >
-        <i class="bi bi-arrow-counterclockwise"></i>
-        Undo
-      </button>
-    </div>
-  </div>
-</template>
-
 <style scoped>
 .toast-container {
   position: fixed;
@@ -80,7 +80,7 @@ defineExpose({ show, remove })
   align-items: center;
   gap: 1rem;
   padding: 0.75rem 1.25rem;
-  background: rgba(40, 40, 40, 0.95);
+  background: rgba(103, 94, 94, 0.95);
   border: 1px solid rgba(21, 205, 116, 0.8);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5),

@@ -1,3 +1,30 @@
+<template>
+  <div>
+    <label class="sam-label">Select a saved account</label>
+    <div class="sam-row">
+      <select v-model="selectedEmail" class="sam-select">
+        <option v-for="a in displayAccounts" :key="a.email" :value="a.email">
+          {{ a.email === DEFAULT_EMAIL ? a.label : formatAccountDisplay(a) }}
+        </option>
+      </select>
+      <button
+        type="button"
+        class="sam-button sam-button-edit"
+        title="Rename saved login"
+        :disabled="selectedEmail === DEFAULT_EMAIL"
+        @click="renameSelected"
+      >
+        <img src="/icons/edit-12-000000.svg" alt="Edit">
+      </button>
+      <button type="button" class="sam-button sam-button-delete" title="Delete selected" 
+        :disabled="selectedEmail === DEFAULT_EMAIL"
+        @click="removeSelected">
+        <img src="/icons/trash-2-12-000000.svg" alt="Delete">
+      </button>
+    </div>
+  </div>
+</template>
+
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useDialog } from './DialogHost.vue'
@@ -251,33 +278,6 @@ defineExpose({
   selectedEmail,  // Expose the ref so parent can watch it
 })
 </script>
-
-<template>
-  <div>
-    <label class="sam-label">Select a saved account</label>
-    <div class="sam-row">
-      <select v-model="selectedEmail" class="sam-select">
-        <option v-for="a in displayAccounts" :key="a.email" :value="a.email">
-          {{ a.email === DEFAULT_EMAIL ? a.label : formatAccountDisplay(a) }}
-        </option>
-      </select>
-      <button
-        type="button"
-        class="sam-button sam-button-edit"
-        title="Rename saved login"
-        :disabled="selectedEmail === DEFAULT_EMAIL"
-        @click="renameSelected"
-      >
-        <img src="/icons/edit-12-000000.svg" alt="Edit">
-      </button>
-      <button type="button" class="sam-button sam-button-delete" title="Delete selected" 
-        :disabled="selectedEmail === DEFAULT_EMAIL"
-        @click="removeSelected">
-        <img src="/icons/trash-2-12-000000.svg" alt="Delete">
-      </button>
-    </div>
-  </div>
-</template>
 
 <style scoped>
 .sam-label { display:block; font-weight:600; margin-bottom:.25rem; }
