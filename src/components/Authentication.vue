@@ -1,3 +1,79 @@
+<template>
+  <div>
+    <legend>Step 1: Authenticate</legend>
+
+    <div class="save-toggle" :class="{ 'is-enabled': savingEnabled }">
+      <button
+        type="button"
+        class="save-toggle__button"
+        role="switch"
+        :aria-checked="savingEnabled"
+        @click="handleSavingToggle(!savingEnabled)"
+        @keyup.enter.prevent="handleSavingToggle(!savingEnabled)"
+        @keyup.space.prevent="handleSavingToggle(!savingEnabled)"
+      >
+        <span class="save-toggle__indicator" aria-hidden="true"></span>
+        <span class="save-toggle__content">
+          <span class="save-toggle__title">Enable saved logins on this device</span>
+          <span class="save-toggle__subtitle">Store credentials locally for faster sign-in.</span>
+          <span class="save-toggle__warning">Only enable this on a trusted personal device. Do not use on shared or public computers.</span>
+        </span>
+        <span class="save-toggle__status" aria-hidden="true">
+          {{ savingEnabled ? 'On' : 'Off' }}
+        </span>
+      </button>
+    </div>
+
+    <SavedAccounts
+      v-if="savingEnabled"
+      ref="savedRef"
+    />
+    
+    <div class="separator"><strong>OR...</strong> Use your Stremio account (Facebook login is not supported)</div>
+    
+    <div class="field-group">
+      <label class="field-label" for="auth-email">Email</label>
+      <input
+        id="auth-email"
+        type="text"
+        v-model="email"
+        placeholder="Stremio E-mail"
+        @input="onEmailInput"
+      >
+    </div>
+    
+    <div class="field-group">
+      <label class="field-label" for="auth-password">Password</label>
+      <input
+        id="auth-password"
+        type="password"
+        v-model="password"
+        placeholder="Stremio Password"
+        @input="onPasswordInput"
+      >
+    </div>
+    
+    <div class="separator"><strong>OR...</strong> Use an authentication key (see "Step 1" in the guide above)</div>
+    
+    <div class="field-group">
+      <label class="field-label" for="auth-key">AuthKey</label>
+      <input
+        id="auth-key"
+        ref="authKeyInput"
+        type="password"
+        autocomplete="off"
+        data-bwignore="true"
+        v-model="authKey"
+        @input="onAuthKeyInput"
+        placeholder="Paste Stremio AuthKey here..."
+      >
+    </div>
+
+    <!-- Toast notifications -->
+    <Toast ref="toastRef" />
+  </div>
+</template>
+
 <script setup>
 import { ref, computed, nextTick, watch } from 'vue'
 import SavedAccounts from './SavedAccounts.vue'
@@ -684,82 +760,6 @@ function getFormattedAccountDisplay() {
 
 defineExpose({ verifyCredentialsForLoad, handleLoadAddonsFlow, canLoadAddons, getSavedAccountInfo, getFormattedAccountDisplay })
 </script>
-
-<template>
-  <div>
-    <legend>Step 1: Authenticate</legend>
-
-    <div class="save-toggle" :class="{ 'is-enabled': savingEnabled }">
-      <button
-        type="button"
-        class="save-toggle__button"
-        role="switch"
-        :aria-checked="savingEnabled"
-        @click="handleSavingToggle(!savingEnabled)"
-        @keyup.enter.prevent="handleSavingToggle(!savingEnabled)"
-        @keyup.space.prevent="handleSavingToggle(!savingEnabled)"
-      >
-        <span class="save-toggle__indicator" aria-hidden="true"></span>
-        <span class="save-toggle__content">
-          <span class="save-toggle__title">Enable saved logins on this device</span>
-          <span class="save-toggle__subtitle">Store credentials locally for faster sign-in.</span>
-          <span class="save-toggle__warning">Only enable this on a trusted personal device. Do not use on shared or public computers.</span>
-        </span>
-        <span class="save-toggle__status" aria-hidden="true">
-          {{ savingEnabled ? 'On' : 'Off' }}
-        </span>
-      </button>
-    </div>
-
-    <SavedAccounts
-      v-if="savingEnabled"
-      ref="savedRef"
-    />
-    
-    <div class="separator"><strong>OR...</strong> Use your Stremio account (Facebook login is not supported)</div>
-    
-    <div class="field-group">
-      <label class="field-label" for="auth-email">Email</label>
-      <input
-        id="auth-email"
-        type="text"
-        v-model="email"
-        placeholder="Stremio E-mail"
-        @input="onEmailInput"
-      >
-    </div>
-    
-    <div class="field-group">
-      <label class="field-label" for="auth-password">Password</label>
-      <input
-        id="auth-password"
-        type="password"
-        v-model="password"
-        placeholder="Stremio Password"
-        @input="onPasswordInput"
-      >
-    </div>
-    
-    <div class="separator"><strong>OR...</strong> Use an authentication key (see "Step 1" in the guide above)</div>
-    
-    <div class="field-group">
-      <label class="field-label" for="auth-key">AuthKey</label>
-      <input
-        id="auth-key"
-        ref="authKeyInput"
-        type="password"
-        autocomplete="off"
-        data-bwignore="true"
-        v-model="authKey"
-        @input="onAuthKeyInput"
-        placeholder="Paste Stremio AuthKey here..."
-      >
-    </div>
-
-    <!-- Toast notifications -->
-    <Toast ref="toastRef" />
-  </div>
-</template>
 
 <style scoped>
 .field-group {

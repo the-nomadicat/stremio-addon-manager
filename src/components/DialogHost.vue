@@ -1,3 +1,50 @@
+<template>
+  <slot />
+  <teleport to="body">
+    <transition name="dialog-fade">
+      <div v-if="activeDialog" class="dialog-backdrop">
+        <div class="dialog-panel" role="dialog" :aria-modal="true" :aria-labelledby="activeDialog.id + '-title'">
+          <header class="dialog-header">
+            <h2 :id="activeDialog.id + '-title'" class="dialog-title">{{ activeDialog.title }}</h2>
+          </header>
+          <div class="dialog-body">
+            <p v-if="activeDialog.htmlMessage" class="dialog-message" v-html="activeDialog.htmlMessage"></p>
+            <textarea
+              v-if="isPrompt && activeDialog.multiline"
+              v-model="inputValue"
+              class="dialog-input dialog-input--textarea"
+              :placeholder="activeDialog.placeholder"
+              data-dialog-autofocus="true"
+              rows="4"
+            ></textarea>
+            <input
+              v-else-if="isPrompt"
+              v-model="inputValue"
+              type="text"
+              class="dialog-input"
+              :placeholder="activeDialog.placeholder"
+              data-dialog-autofocus="true"
+            >
+          </div>
+          <footer class="dialog-footer">
+            <button v-if="isConfirm || isPrompt" type="button" class="dialog-button dialog-button--secondary" @click="cancelDialog">
+              {{ activeDialog.cancelText }}
+            </button>
+            <button
+              type="button"
+              class="dialog-button dialog-button--primary"
+              :data-dialog-autofocus="!(isPrompt && activeDialog.multiline)"
+              @click="confirmDialog"
+            >
+              {{ activeDialog.confirmText }}
+            </button>
+          </footer>
+        </div>
+      </div>
+    </transition>
+  </teleport>
+</template>
+
 <script>
 import { inject } from 'vue'
 
@@ -144,53 +191,6 @@ function alert(options = {}) {
 
 provide(dialogSymbol, { confirm, prompt, alert })
 </script>
-
-<template>
-  <slot />
-  <teleport to="body">
-    <transition name="dialog-fade">
-      <div v-if="activeDialog" class="dialog-backdrop">
-        <div class="dialog-panel" role="dialog" :aria-modal="true" :aria-labelledby="activeDialog.id + '-title'">
-          <header class="dialog-header">
-            <h2 :id="activeDialog.id + '-title'" class="dialog-title">{{ activeDialog.title }}</h2>
-          </header>
-          <div class="dialog-body">
-            <p v-if="activeDialog.htmlMessage" class="dialog-message" v-html="activeDialog.htmlMessage"></p>
-            <textarea
-              v-if="isPrompt && activeDialog.multiline"
-              v-model="inputValue"
-              class="dialog-input dialog-input--textarea"
-              :placeholder="activeDialog.placeholder"
-              data-dialog-autofocus="true"
-              rows="4"
-            ></textarea>
-            <input
-              v-else-if="isPrompt"
-              v-model="inputValue"
-              type="text"
-              class="dialog-input"
-              :placeholder="activeDialog.placeholder"
-              data-dialog-autofocus="true"
-            >
-          </div>
-          <footer class="dialog-footer">
-            <button v-if="isConfirm || isPrompt" type="button" class="dialog-button dialog-button--secondary" @click="cancelDialog">
-              {{ activeDialog.cancelText }}
-            </button>
-            <button
-              type="button"
-              class="dialog-button dialog-button--primary"
-              :data-dialog-autofocus="!(isPrompt && activeDialog.multiline)"
-              @click="confirmDialog"
-            >
-              {{ activeDialog.confirmText }}
-            </button>
-          </footer>
-        </div>
-      </div>
-    </transition>
-  </teleport>
-</template>
 
 <style scoped>
 .dialog-fade-enter-active,
