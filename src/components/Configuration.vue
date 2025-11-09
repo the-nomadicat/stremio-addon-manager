@@ -1143,8 +1143,8 @@ button:disabled {
 }
 
 .button.primary:disabled {
-    background-color: #6c757d;
-    opacity: 0.6;
+    background-color: #3d5f4a;
+    opacity: 0.5;
 }
 
 .button.primary.large {
