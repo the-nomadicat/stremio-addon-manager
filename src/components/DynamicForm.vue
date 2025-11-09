@@ -80,7 +80,7 @@
                                         >
                                             <img v-if="hasSearchExtra(element)" src="/icons/home-20-000000.svg" alt="" aria-hidden="true" class="icon-home" />
                                             <img v-if="hasSearchExtra(element)" src="/icons/compass-20-000000.svg" alt="" aria-hidden="true" class="icon-discover" />
-                                            <img v-if="!hasSearchExtra(element) && hasGenreExtra(element)" src="/icons/home-24-000000.svg" alt="" aria-hidden="true" />
+                                            <img v-if="!hasSearchExtra(element) && (hasGenreExtra(element) || catalogHasControllingExtra(element))" src="/icons/home-24-000000.svg" alt="" aria-hidden="true" />
                                         </span>
                                         <label :for="'catalog-' + element.type" class="catalog-type-label">
                                             {{ element.type }}
@@ -182,6 +182,11 @@ const props = defineProps({
     type: [String, Object],
     required: false,
     default: null
+  },
+  flags: {
+    type: Object,
+    required: false,
+    default: () => ({})
   }
 })
 
@@ -536,6 +541,13 @@ function hasGenreExtra(catalog) {
     return catalog.extra.some(e => e && typeof e === 'object' && e.name === 'genre');
 }
 
+function hasSystemExtra(catalog) {
+    // Check for special system extras that shouldn't be editable
+    if (!Array.isArray(catalog.extra)) return false;
+    const systemExtras = ['lastVideosIds', 'calendarVideosIds'];
+    return catalog.extra.some(e => e && typeof e === 'object' && systemExtras.includes(e.name));
+}
+
 function getSearchExtra(catalog) {
     if (!Array.isArray(catalog.extra)) return null;
     return catalog.extra.find(e => e && typeof e === 'object' && e.name === 'search') || null;
@@ -547,8 +559,24 @@ function getGenreExtra(catalog) {
 }
 
 function catalogHasControllingExtra(catalog) {
-    // Check if catalog has either "search" or "genre" extra
-    return hasSearchExtra(catalog) || hasGenreExtra(catalog);
+    // For protected addons (Cinemeta, Local Files), only allow editing non-system catalogs
+    if (props.flags && props.flags.protected) {
+        // System catalogs (Last videos, Calendar videos) cannot be edited
+        if (hasSystemExtra(catalog)) return false;
+        
+        // Other catalogs in protected addons can be edited if they have search or genre extras
+        return hasSearchExtra(catalog) || hasGenreExtra(catalog);
+    }
+    
+    // For non-protected addons (Trakt, etc.), allow editing all catalogs
+    // Allow editing if catalog has search or genre extras
+    if (hasSearchExtra(catalog) || hasGenreExtra(catalog)) return true;
+    
+    // Also allow editing for catalogs without any extra (like Trakt)
+    // by adding a genre extra automatically when they try to toggle
+    if (!Array.isArray(catalog.extra) || catalog.extra.length === 0) return true;
+    
+    return false;
 }
 
 function isCatalogVisible(catalog) {
@@ -558,10 +586,15 @@ function isCatalogVisible(catalog) {
         return searchExtra && searchExtra.isRequired !== true;
     }
     
-    // When only genre exists, it controls visibility
+    // When genre exists, it controls visibility
     if (hasGenreExtra(catalog)) {
         const genreExtra = getGenreExtra(catalog);
         return genreExtra && genreExtra.isRequired !== true;
+    }
+    
+    // For catalogs without extra (like Trakt), default to visible
+    if (!Array.isArray(catalog.extra) || catalog.extra.length === 0) {
+        return true;
     }
     
     return false;
@@ -576,15 +609,18 @@ function getVisibilityTitle(catalog) {
         // Combined Home + Discover control
         return isVisible ? 'Visible on Home & Discover pages' : 'Hidden from Home & Discover pages';
     } else {
-        // Genre controls Home (and implicitly Discover)
+        // Genre controls Home (or catalogs without extras that we'll add genre to)
         return isVisible ? 'Visible on Home page' : 'Hidden from Home page';
     }
 }
 
 function toggleCatalogVisibility(catalog) {
-    if (!Array.isArray(catalog.extra)) return;
-    
     const isCurrentlyVisible = isCatalogVisible(catalog);
+    
+    // Ensure catalog has an extra array
+    if (!Array.isArray(catalog.extra)) {
+        catalog.extra = [];
+    }
     
     // When search extra exists, it controls visibility
     if (hasSearchExtra(catalog)) {
@@ -605,7 +641,7 @@ function toggleCatalogVisibility(catalog) {
             delete genreExtra.isRequired;
         }
     } 
-    // When only genre exists, it controls visibility
+    // When genre exists, it controls visibility
     else if (hasGenreExtra(catalog)) {
         const genreExtra = getGenreExtra(catalog);
         if (!genreExtra) return;
@@ -617,6 +653,19 @@ function toggleCatalogVisibility(catalog) {
             // Show: remove isRequired property
             delete genreExtra.isRequired;
         }
+    }
+    // For catalogs without extra (like Trakt), add a genre extra
+    else if (catalog.extra.length === 0) {
+        if (isCurrentlyVisible) {
+            // Hide: add genre extra with isRequired: true
+            catalog.extra.push({
+                name: 'genre',
+                isRequired: true,
+                options: [],
+                optionsLimit: 1
+            });
+        }
+        // If not visible and no extra exists, do nothing (shouldn't happen)
     }
     
     syncJsonModel();

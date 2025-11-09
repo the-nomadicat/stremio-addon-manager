@@ -150,6 +150,7 @@
                 :manifest="currentManifest" 
                 :manifestURL="currentManifestURL"
                 :highlightCatalog="highlightCatalogInfo"
+                :flags="currentAddonFlags"
                 @update-manifest="saveManifestEdit" 
                 @cancel="closeEditModal"
             />
@@ -181,6 +182,7 @@ let isEditModalVisible = ref(false);
 let currentManifest = ref({});
 let currentManifestURL = ref('');
 let currentEditIdx = ref(null);
+let currentAddonFlags = ref({});
 let highlightCatalogInfo = ref(null);
 
 // current email coming from Authentication.vue
@@ -655,6 +657,7 @@ function openEditAddon(idx) {
     currentEditIdx.value = idx;
     currentManifest.value = { ...addons.value[idx].manifest };
     currentManifestURL.value = addons.value[idx].transportUrl;
+    currentAddonFlags.value = addons.value[idx].flags || {};
     document.body.classList.add('modal-open');
 }
 
@@ -663,6 +666,7 @@ function closeEditModal() {
     currentManifest.value = {};
     currentManifestURL.value = '';
     currentEditIdx.value = null;
+    currentAddonFlags.value = {};
     highlightCatalogInfo.value = null;
     document.body.classList.remove('modal-open');
 }
