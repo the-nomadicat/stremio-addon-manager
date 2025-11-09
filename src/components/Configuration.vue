@@ -144,8 +144,8 @@
         </div>
     </div>
 
-    <div v-if="isEditModalVisible" class="modal" @wheel.prevent @touchmove.prevent @scroll.prevent>
-        <div class="modal-content" @wheel.stop @touchmove.stop @scroll.stop>
+    <div v-if="isEditModalVisible" class="modal" @wheel.prevent @scroll.prevent>
+        <div class="modal-content" @wheel.stop @scroll.stop>
             <DynamicForm 
                 :manifest="currentManifest" 
                 :manifestURL="currentManifestURL"

@@ -1097,6 +1097,10 @@ textarea {
 .catalog-ghost {
     opacity: 0.4;
     touch-action: none; /* Disable scrolling when dragging */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 .catalog-item {
@@ -1170,6 +1174,10 @@ textarea {
     flex-shrink: 0;
     touch-action: none; /* Disable all touch scrolling for drag handles */
     transition: background-color 0.2s ease, transform 0.1s ease;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 .drag-handle:hover {
