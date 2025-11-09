@@ -27,6 +27,11 @@
                     </div>
 
                     <div class="form-group">
+                        <label for="features">Features</label>
+                        <AddonFeatures :manifest="formModel" :showText="true" />
+                    </div>
+
+                    <div class="form-group">
                         <label for="logo">Logo URL</label>
                         <input
                             id="logo"
@@ -161,6 +166,7 @@ import { ref, watch, defineEmits, onMounted, nextTick, computed } from 'vue'
 import Draggable from 'vuedraggable'
 import { useDialog } from './DialogHost.vue'
 import Toast from './Toast.vue'
+import AddonFeatures from './AddonFeatures.vue'
 
 const props = defineProps({
   manifest: {

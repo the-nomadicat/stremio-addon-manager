@@ -58,6 +58,7 @@
                     <template #item="{ element, index }">
                         <AddonItem :name="element.manifest.name" :idx="index" :manifestURL="element.transportUrl"
                             :logoURL="element.manifest.logo"
+                            :manifest="element.manifest"
                             :isDeletable="!getNestedObjectProperty(element, 'flags.protected', false)"
                             :isConfigurable="getNestedObjectProperty(element, 'manifest.behaviorHints.configurable', false)"
                             @delete-addon="removeAddon"

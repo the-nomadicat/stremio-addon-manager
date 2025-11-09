@@ -5,7 +5,10 @@
         <div class="logo_container">
           <img :src="logoURL || defaultLogo" />
         </div>
-        <span>{{ name }}</span>
+        <div class="addon-info">
+          <span class="addon-name">{{ name }}</span>
+          <AddonFeatures :manifest="manifest" :showText="false" />
+        </div>
       </div>
     </div>
     <div class="actions-wrapper">
@@ -38,6 +41,7 @@
 
 <script setup>
   import { ref } from 'vue'
+  import AddonFeatures from './AddonFeatures.vue'
 
   const props = defineProps({
     name: {
@@ -65,6 +69,11 @@
       type: Boolean,
       required: false,
       default: false
+    },
+    manifest: {
+      type: Object,
+      required: false,
+      default: () => ({})
     }
   })
   
@@ -180,6 +189,17 @@
   display: flex;
   align-items: center;
   flex: 1;
+}
+
+.addon-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.addon-name {
+  font-weight: 500;
 }
 
 .item .details img {
