@@ -845,9 +845,9 @@ async function handleReset() {
 }
 
 .save-button:disabled {
-    background-color: #6c757d;
+    background-color: #3d5f4a;
     cursor: not-allowed;
-    opacity: 0.6;
+    opacity: 0.5;
     transform: none;
 }
 
