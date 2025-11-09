@@ -563,15 +563,19 @@ function catalogHasControllingExtra(catalog) {
     if (props.flags && props.flags.protected) {
         // System catalogs (Last videos, Calendar videos) cannot be edited
         if (hasSystemExtra(catalog)) return false;
-        
-        // Other catalogs in protected addons can be edited if they have search or genre extras
-        return hasSearchExtra(catalog) || hasGenreExtra(catalog);
+    }
+
+    // For non-protected addons...
+    // Search catalogs should not be editable because they provide search functionality
+    if (hasSearchExtra(catalog)) {
+        return false;
     }
     
-    // For non-protected addons (Trakt, etc.), allow editing all catalogs
-    // Allow editing if catalog has search or genre extras
-    if (hasSearchExtra(catalog) || hasGenreExtra(catalog)) return true;
-    
+    // Allow editing if catalog has genre extras
+    if (hasGenreExtra(catalog)) {
+        return true;
+    }
+
     // Also allow editing for catalogs without any extra (like Trakt)
     // by adding a genre extra automatically when they try to toggle
     if (!Array.isArray(catalog.extra) || catalog.extra.length === 0) return true;
