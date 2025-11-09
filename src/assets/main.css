@@ -32,3 +32,10 @@ input {
 body.dialog-open {
     overflow: hidden;
 }
+
+body.modal-open {
+    overflow: hidden;
+    position: fixed;
+    width: 100%;
+    height: 100%;
+}

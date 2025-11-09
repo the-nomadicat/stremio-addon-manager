@@ -144,8 +144,8 @@
         </div>
     </div>
 
-    <div v-if="isEditModalVisible" class="modal">
-        <div class="modal-content">
+    <div v-if="isEditModalVisible" class="modal" @wheel.prevent @touchmove.prevent @scroll.prevent>
+        <div class="modal-content" @wheel.stop @touchmove.stop @scroll.stop>
             <DynamicForm 
                 :manifest="currentManifest" 
                 :manifestURL="currentManifestURL"
@@ -1053,8 +1053,9 @@ onUnmounted(() => {
     display: flex;
     justify-content: center;
     align-items: center;
-    overflow: auto;
-    overscroll-behavior: contain;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: none;
 }
 
 .modal-content {
@@ -1070,6 +1071,8 @@ onUnmounted(() => {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    touch-action: auto;
+    overscroll-behavior: contain;
 }
 
 /* Tablet and smaller screens - maximize screen usage */
