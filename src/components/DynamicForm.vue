@@ -72,15 +72,15 @@
                                         <span 
                                             class="visibility-indicator" 
                                             :class="{ 
-                                                'is-visible': catalogHasControllingExtra(element) && isCatalogVisible(element),
-                                                'visibility-hidden': !catalogHasControllingExtra(element)
+                                                'is-visible': !hasSystemExtra(element) && isCatalogVisible(element),
+                                                'visibility-hidden': hasSystemExtra(element)
                                             }"
                                             :title="getVisibilityTitle(element)"
-                                            @click="catalogHasControllingExtra(element) ? toggleCatalogVisibility(element) : null"
+                                            @click="!hasSystemExtra(element) ? toggleCatalogVisibility(element) : null"
                                         >
                                             <img v-if="hasSearchExtra(element)" src="/icons/home-20-000000.svg" alt="" aria-hidden="true" class="icon-home" />
                                             <img v-if="hasSearchExtra(element)" src="/icons/compass-20-000000.svg" alt="" aria-hidden="true" class="icon-discover" />
-                                            <img v-if="!hasSearchExtra(element) && (hasGenreExtra(element) || catalogHasControllingExtra(element))" src="/icons/home-24-000000.svg" alt="" aria-hidden="true" />
+                                            <img v-if="!hasSearchExtra(element) && !hasSystemExtra(element)" src="/icons/home-24-000000.svg" alt="" aria-hidden="true" />
                                         </span>
                                         <label :for="'catalog-' + element.type" class="catalog-type-label">
                                             {{ element.type }}
@@ -96,7 +96,7 @@
                                         <button 
                                             type="button" 
                                             class="delete-button" 
-                                            :class="{ 'delete-hidden': !catalogHasControllingExtra(element) }"
+                                            :class="{ 'delete-hidden': hasSystemExtra(element) || hasSearchExtra(element) }"
                                             @click="handleDeleteCatalog(element, index)"
                                         >
                                             <img src="/icons/trash-2-16-000000.svg" alt="Delete Catalog" />
@@ -558,30 +558,7 @@ function getGenreExtra(catalog) {
     return catalog.extra.find(e => e && typeof e === 'object' && e.name === 'genre') || null;
 }
 
-function catalogHasControllingExtra(catalog) {
-    // For protected addons (Cinemeta, Local Files), only allow editing non-system catalogs
-    if (props.flags && props.flags.protected) {
-        // System catalogs (Last videos, Calendar videos) cannot be edited
-        if (hasSystemExtra(catalog)) return false;
-    }
 
-    // For non-protected addons...
-    // Search catalogs should not be editable because they provide search functionality
-    if (hasSearchExtra(catalog)) {
-        return false;
-    }
-    
-    // Allow editing if catalog has genre extras
-    if (hasGenreExtra(catalog)) {
-        return true;
-    }
-
-    // Also allow editing for catalogs without any extra (like Trakt)
-    // by adding a genre extra automatically when they try to toggle
-    if (!Array.isArray(catalog.extra) || catalog.extra.length === 0) return true;
-    
-    return false;
-}
 
 function isCatalogVisible(catalog) {
     // When search extra exists, it controls visibility
@@ -605,15 +582,13 @@ function isCatalogVisible(catalog) {
 }
 
 function getVisibilityTitle(catalog) {
-    if (!catalogHasControllingExtra(catalog)) return '';
+    if (hasSystemExtra(catalog)) return '';
     
     const isVisible = isCatalogVisible(catalog);
     
     if (hasSearchExtra(catalog)) {
-        // Combined Home + Discover control
         return isVisible ? 'Visible on Home & Discover pages' : 'Hidden from Home & Discover pages';
     } else {
-        // Genre controls Home (or catalogs without extras that we'll add genre to)
         return isVisible ? 'Visible on Home page' : 'Hidden from Home page';
     }
 }
