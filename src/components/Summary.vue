@@ -224,7 +224,7 @@ const panelDefinitions = [
 ]
 
 const PANEL_STATE_KEY = 'sam.summary.openPanels.v1'
-const defaultOpenPanels = panelDefinitions.map(panel => panel.id)
+const defaultOpenPanels = []
 
 function loadStoredPanels() {
   if (typeof window === 'undefined') return [...defaultOpenPanels]

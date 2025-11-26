@@ -52,20 +52,26 @@
                     </button>
                 </div>
                 
-                <draggable v-if="addons.length" :list="addons" item-key="transportUrl" class="sortable-list" ghost-class="ghost"
-                    handle=".drag-handle"
-                    @start="dragging = true" @end="handleDragEnd">
-                    <template #item="{ element, index }">
-                        <AddonItem :name="element.manifest.name" :idx="index" :manifestURL="element.transportUrl"
-                            :logoURL="element.manifest.logo"
-                            :manifest="element.manifest"
-                            :isDeletable="!getNestedObjectProperty(element, 'flags.protected', false)"
-                            :isConfigurable="getNestedObjectProperty(element, 'manifest.behaviorHints.configurable', false)"
-                            @delete-addon="removeAddon"
-                            @edit-addon="openEditAddon"
-                            @show-toast="handleToast" />
-                    </template>
-                </draggable>
+                <div v-if="addons.length" class="collapsible-addon-list">
+                    <button @click="isAddonListCollapsed = !isAddonListCollapsed" class="button toggle-collapse-button">
+                        {{ isAddonListCollapsed ? 'Show' : 'Hide' }} Addons
+                        <i :class="isAddonListCollapsed ? 'bi bi-chevron-down' : 'bi bi-chevron-up'"></i>
+                    </button>
+                    <draggable v-show="!isAddonListCollapsed" :list="addons" item-key="transportUrl" class="sortable-list" ghost-class="ghost"
+                        handle=".drag-handle"
+                        @start="dragging = true" @end="handleDragEnd">
+                        <template #item="{ element, index }">
+                            <AddonItem :name="element.manifest.name" :idx="index" :manifestURL="element.transportUrl"
+                                :logoURL="element.manifest.logo"
+                                :manifest="element.manifest"
+                                :isDeletable="!getNestedObjectProperty(element, 'flags.protected', false)"
+                                :isConfigurable="getNestedObjectProperty(element, 'manifest.behaviorHints.configurable', false)"
+                                @delete-addon="removeAddon"
+                                @edit-addon="openEditAddon"
+                                @show-toast="handleToast" />
+                        </template>
+                    </draggable>
+                </div>
                 <p v-else-if="stremioAuthKey" class="empty-state">No addons loaded! Load addons or restore a configuration above to start editing them.</p>
             </fieldset>
 
@@ -177,6 +183,7 @@ let hasLoadedAddons = ref(false)
 const authRef = ref(null)
 const dialog = useDialog()
 const toastRef = ref(null)
+const isAddonListCollapsed = ref(true)
 
 let isEditModalVisible = ref(false);
 let currentManifest = ref({});
@@ -1212,6 +1219,23 @@ button:disabled {
 
 .find-catalog-button:active {
     background-color: #004494;
+}
+
+.collapsible-addon-list {
+    margin-top: 1rem;
+}
+
+.toggle-collapse-button {
+    width: 100%;
+    margin-bottom: 1rem;
+    background-color: #3a3a3a;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.toggle-collapse-button:hover {
+    background-color: #4a4a4a;
 }
 
 /* Search Widget Overlay */
