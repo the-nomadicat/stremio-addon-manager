@@ -216,12 +216,6 @@ const deepDiveSections = [
 
 const panelDefinitions = [
   {
-    id: 'spotlights',
-    title: 'Everything you can do here',
-    subtitle: 'Scan the feature set before you start rearranging anything.',
-    kind: 'spotlights',
-  },
-  {
     id: 'workflow',
     title: 'Step-by-step workflow',
     subtitle: 'Follow this guide from sign-in to syncing your final layout.',
