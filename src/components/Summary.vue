@@ -216,12 +216,6 @@ const deepDiveSections = [
 
 const panelDefinitions = [
   {
-    id: 'spotlights',
-    title: 'Everything you can do here',
-    subtitle: 'Scan the feature set before you start rearranging anything.',
-    kind: 'spotlights',
-  },
-  {
     id: 'workflow',
     title: 'Step-by-step workflow',
     subtitle: 'Follow this guide from sign-in to syncing your final layout.',
@@ -230,7 +224,7 @@ const panelDefinitions = [
 ]
 
 const PANEL_STATE_KEY = 'sam.summary.openPanels.v1'
-const defaultOpenPanels = panelDefinitions.map(panel => panel.id)
+const defaultOpenPanels = []
 
 function loadStoredPanels() {
   if (typeof window === 'undefined') return [...defaultOpenPanels]
