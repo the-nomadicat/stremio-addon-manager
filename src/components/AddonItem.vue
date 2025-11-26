@@ -164,8 +164,8 @@
   cursor: default;
   align-items: center;
   border-radius: 5px;
-  padding: 10px 13px;
-  margin-bottom: 11px;
+  padding: 5px 8px;
+  margin-bottom: 8px;
   border: 1px solid #ccc;
   justify-content: space-between;
   flex-wrap: wrap;
@@ -203,10 +203,10 @@
 }
 
 .item .details img {
-  height: 60px;
-  width: 60px;
+  height: 40px;
+  width: 40px;
   pointer-events: none;
-  margin-right: 12px;
+  margin-right: 10px;
   object-fit: contain;
   object-position: center;
   border-radius: 30%;
