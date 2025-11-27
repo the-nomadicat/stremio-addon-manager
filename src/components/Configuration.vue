@@ -183,7 +183,7 @@ let hasLoadedAddons = ref(false)
 const authRef = ref(null)
 const dialog = useDialog()
 const toastRef = ref(null)
-const isAddonListCollapsed = ref(true)
+const isAddonListCollapsed = ref(false)
 
 let isEditModalVisible = ref(false);
 let currentManifest = ref({});
