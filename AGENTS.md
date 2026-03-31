@@ -12,4 +12,10 @@
 - Use the GitHub identity `the-nomadicat` configured on ms-surface-1.
 - Keep the origin remote on SSH (git@github.com:owner/repo.git) rather than HTTPS.
 
+## Git Push Safety
+
+- Before committing or pushing, run git fetch origin, git status, and git branch -vv on ms-surface-1.
+- If main or the working branch is behind or diverged from origin, reconcile that first. Do not create workaround history on main.
+- If git push fails with non-fast-forward, stop and inspect branch history instead of using a local temp clone or local HTTPS push.
+- Keep push history simple: commit on ms-surface-1, push from ms-surface-1, and keep the local branch aligned with origin before the next change.
 
