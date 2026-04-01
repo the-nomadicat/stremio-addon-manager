@@ -18,7 +18,7 @@ if (!fs.existsSync(sourceApk)) {
 
 const defaultDestDir =
   process.env.ANDROID_APK_DEST_DIR ||
-  '/mount/c/Users/conta/Dropbox/Apps/StremioAddonManager'
+  '/mount/dropbox/Apps/StremioAddonManager'
 
 fs.mkdirSync(defaultDestDir, { recursive: true })
 
