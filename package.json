@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:android": "npm run build && node node_modules/@capacitor/cli/bin/capacitor sync android",
+    "open:android": "node node_modules/@capacitor/cli/bin/capacitor open android",
+    "linux:android-debug": "node scripts/linux-android-debug.mjs",
+    "deploy:android": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/deploy-android.ps1",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -15,7 +19,10 @@
     "vuedraggable": "^4.1.0"
   },
   "devDependencies": {
+    "@capacitor/android": "^8.3.0",
+    "@capacitor/cli": "^8.3.0",
+    "@capacitor/core": "^8.3.0",
     "@vitejs/plugin-vue": "^5.0.3",
-    "vite": "^5.0.11"
+    "vite": "^5.4.21"
   }
 }

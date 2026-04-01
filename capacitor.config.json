@@ -1,0 +1,8 @@
+{
+  "appId": "dev.nomadicat.stremioaddonmanager",
+  "appName": "Stremio Addon Manager",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
