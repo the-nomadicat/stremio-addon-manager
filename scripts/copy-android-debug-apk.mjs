@@ -33,8 +33,8 @@ const stats = fs.statSync(destinationPath)
 
 function resolveDefaultDestDir() {
   const base = [
-    '/mnt/d/Dropbox/Apps',
     '/mnt/c/Users/conta/Dropbox/Apps',
+    '/mnt/d/Dropbox/Apps',
     '/mnt/c/Users/m_ack/Dropbox/Apps',
   ].find(candidate => fs.existsSync(candidate))
 
