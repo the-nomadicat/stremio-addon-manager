@@ -13,14 +13,19 @@ if (Test-Path $jdk21) {
 }
 
 Write-Host ""
-Write-Host "=== [1/3] Syncing Capacitor Android project ===" -ForegroundColor Cyan
+Write-Host "=== [1/4] Bumping app version ===" -ForegroundColor Cyan
+$nextVersion = node scripts/bump-version.mjs
+if ($LASTEXITCODE -ne 0) { throw "Version bump failed" }
+Write-Host ("  New version: " + $nextVersion.Trim()) -ForegroundColor Green
+
+Write-Host "=== [2/4] Syncing Capacitor Android project ===" -ForegroundColor Cyan
 npm install --include=dev --no-package-lock
 if ($LASTEXITCODE -ne 0) { throw "npm install failed" }
 npm run build:android
 if ($LASTEXITCODE -ne 0) { throw "Android sync failed" }
 
 Write-Host ""
-Write-Host "=== [2/3] Building debug APK ===" -ForegroundColor Cyan
+Write-Host "=== [3/4] Building debug APK ===" -ForegroundColor Cyan
 Push-Location (Join-Path $ProjectDir "android")
 try {
   .\gradlew.bat assembleDebug
@@ -30,6 +35,6 @@ try {
 }
 
 Write-Host ""
-Write-Host "=== [3/3] Copying APK to Dropbox/TailDrive ===" -ForegroundColor Cyan
+Write-Host "=== [4/4] Copying APK to Dropbox/TailDrive ===" -ForegroundColor Cyan
 & (Join-Path $PSScriptRoot "android-copy-debug-apk.ps1")
 if ($LASTEXITCODE -ne 0) { throw "APK copy failed" }
