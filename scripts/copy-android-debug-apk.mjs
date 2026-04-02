@@ -18,7 +18,7 @@ if (!fs.existsSync(sourceApk)) {
 
 const defaultDestDir =
   process.env.ANDROID_APK_DEST_DIR ||
-  '/mnt/d/Dropbox/Apps/StremioAddonManager'
+  resolveDefaultDestDir()
 
 fs.mkdirSync(defaultDestDir, { recursive: true })
 
@@ -30,5 +30,22 @@ const destinationPath = path.join(
 fs.copyFileSync(sourceApk, destinationPath)
 
 const stats = fs.statSync(destinationPath)
+
+function resolveDefaultDestDir() {
+  const base = [
+    '/mnt/d/Dropbox/Apps',
+    '/mnt/c/Users/conta/Dropbox/Apps',
+    '/mnt/c/Users/m_ack/Dropbox/Apps',
+  ].find(candidate => fs.existsSync(candidate))
+
+  if (!base) {
+    throw new Error('No Dropbox Apps directory found for StremioAddonManager')
+  }
+
+  const destination = path.join(base, 'StremioAddonManager')
+  fs.mkdirSync(destination, { recursive: true })
+  return destination
+}
+
 console.log(`Copied APK: ${destinationPath}`)
 console.log(`Size: ${(stats.size / (1024 * 1024)).toFixed(2)} MB`)
