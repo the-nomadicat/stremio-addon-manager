@@ -1,53 +1,48 @@
+#!/usr/bin/env pwsh
+
 param(
-  [string]$SourceApk = "",
-  [string]$DestDir = "",
-  [string]$AppName = "StremioAddonManager"
+  [string]$ProjectDir = (Split-Path $PSScriptRoot -Parent),
+  [string]$SourceApk,
+  [string]$AppName = 'StremioAddonManager',
+  [string]$Version,
+  [switch]$UseDropbox
 )
 
-$ErrorActionPreference = "Stop"
-$ProjectDir = Split-Path $PSScriptRoot -Parent
+$ErrorActionPreference = 'Stop'
 
 if ([string]::IsNullOrWhiteSpace($SourceApk)) {
-  $SourceApk = Join-Path $ProjectDir "android\app\build\outputs\apk\debug\app-debug.apk"
+  $SourceApk = Join-Path $ProjectDir 'android\app\build\outputs\apk\debug\app-debug.apk'
 }
 
 if (-not (Test-Path -LiteralPath $SourceApk)) {
-  throw "APK source not found: $SourceApk"
+  throw "APK not found: $SourceApk"
 }
 
-if ([string]::IsNullOrWhiteSpace($DestDir)) {
-  $wc = Get-Service WebClient -ErrorAction SilentlyContinue
-  if ($wc -and $wc.Status -ne "Running") {
-    Start-Service WebClient
+if ([string]::IsNullOrWhiteSpace($Version)) {
+  $packageJsonPath = Join-Path $ProjectDir 'package.json'
+  if (-not (Test-Path -LiteralPath $packageJsonPath)) {
+    throw "package.json not found: $packageJsonPath"
   }
 
-  $preferredTailDrive = "Z:\atkins.email@gmail.com\zephyrusg16\dropboxapps\$AppName"
-  $fallbackTailDrive = "T:\atkins.email@gmail.com\zephyrusg16\dropboxapps\$AppName"
-
-  if (Test-Path "Z:\") {
-    $DestDir = $preferredTailDrive
-  } else {
-    if (-not (Test-Path "T:\")) {
-      net use T: http://100.100.100.100:8080 /persistent:no | Out-Null
-    }
-    $DestDir = $fallbackTailDrive
-  }
+  $packageJson = Get-Content -LiteralPath $packageJsonPath -Raw | ConvertFrom-Json
+  $Version = [string]$packageJson.version
 }
 
-if (-not (Test-Path -LiteralPath $DestDir)) {
-  New-Item -ItemType Directory -Path $DestDir -Force | Out-Null
+$dropboxBase = @(
+  'D:\Dropbox\Apps',
+  'C:\Users\conta\Dropbox\Apps',
+  'C:\Users\m_ack\Dropbox\Apps'
+) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+
+if ([string]::IsNullOrWhiteSpace($dropboxBase)) {
+  throw 'No Dropbox Apps directory is available on this machine.'
 }
 
-$packageJson = Get-Content -LiteralPath (Join-Path $ProjectDir "package.json") -Raw | ConvertFrom-Json
-$version = [string]$packageJson.version
-if ([string]::IsNullOrWhiteSpace($version)) {
-  throw "Could not determine app version from package.json"
-}
+$destDir = Join-Path $dropboxBase $AppName
+New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+$targetPath = Join-Path $destDir "$AppName $Version.apk"
+Copy-Item -LiteralPath $SourceApk -Destination $targetPath -Force
 
-$destinationPath = Join-Path $DestDir "$AppName $version.apk"
-Copy-Item -LiteralPath $SourceApk -Destination $destinationPath -Force
-
-$copied = Get-Item -LiteralPath $destinationPath
-Write-Host "Copied APK:"
-Write-Host ("  Path : " + $copied.FullName)
-Write-Host ("  Size : " + [math]::Round($copied.Length / 1MB, 2) + " MB")
+$apk = Get-Item -LiteralPath $targetPath
+Write-Host "Copied APK to $targetPath" -ForegroundColor Green
+Write-Host ("Size MB : " + [math]::Round($apk.Length / 1MB, 2))
