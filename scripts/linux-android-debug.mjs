@@ -44,6 +44,9 @@ const linuxInstallEnv = {
   NODE_ENV: 'development',
 }
 
+// Bump patch version before each build so the APK filename is always unique
+run('npm', ['version', 'patch', '--no-git-tag-version'])
+
 run('npm', ['install', '--no-package-lock'], { env: linuxInstallEnv })
 run('npm', ['install', '--no-save', '@esbuild/linux-x64', '@rollup/rollup-linux-x64-gnu'], { env: linuxInstallEnv })
 run('npm', ['rebuild', 'esbuild'])
