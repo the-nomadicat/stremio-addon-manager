@@ -1,27 +1,28 @@
-import { existsSync } from 'node:fs'
+import fs from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 
+const projectDir = process.cwd()
+const packageJsonPath = path.join(projectDir, 'package.json')
+const TAILDRIVE_BASE = 'http://100.100.100.100:8080/atkins.email@gmail.com/zephyrusg16/dropboxapps'
+const appName = 'StremioAddonManager'
+const apkSource = path.join(projectDir, 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk')
+const dropboxDir = resolveDropboxDir(appName)
 const javaHome = resolveJavaHome()
 
-function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
-    stdio: 'inherit',
-    shell: false,
-    ...options,
-    env: {
-      ...process.env,
-      ...(javaHome ? {
-        JAVA_HOME: javaHome,
-        PATH: `${path.join(javaHome, 'bin')}${path.delimiter}${process.env.PATH ?? ''}`,
-      } : {}),
-      ...(options.env ?? {}),
-    },
-  })
+function resolveDropboxDir(appName) {
+  const base = [
+    '/mount/dropbox/Apps',
+    '/mnt/c/Users/conta/Dropbox/Apps',
+    '/mnt/d/Dropbox/Apps',
+    '/mnt/c/Users/m_ack/Dropbox/Apps',
+  ].find(candidate => fs.existsSync(candidate))
 
-  if (result.status !== 0) {
-    process.exit(result.status ?? 1)
+  if (!base) {
+    return null
   }
+
+  return path.join(base, appName)
 }
 
 function resolveJavaHome() {
@@ -35,7 +36,102 @@ function resolveJavaHome() {
     '/usr/lib/jvm/default-java',
   ]
 
-  return candidates.find(candidate => existsSync(candidate)) ?? ''
+  return candidates.find(candidate => fs.existsSync(candidate)) ?? ''
+}
+
+function run(command, args, options = {}) {
+  const result = spawnSync(command, args, {
+    stdio: 'inherit',
+    shell: false,
+    cwd: options.cwd ?? projectDir,
+    env: {
+      ...process.env,
+      ...(javaHome ? {
+        JAVA_HOME: javaHome,
+        PATH: `${path.join(javaHome, 'bin')}${path.delimiter}${process.env.PATH ?? ''}`,
+      } : {}),
+      ...(options.env ?? {}),
+    },
+  })
+
+  if (result.error) {
+    throw result.error
+  }
+
+  if ((result.status ?? 0) !== 0) {
+    throw new Error(`${command} ${args.join(' ')} failed with exit code ${result.status}`)
+  }
+}
+
+function bumpVersion() {
+  const result = spawnSync('npm', ['version', 'patch', '--no-git-tag-version'], {
+    cwd: projectDir,
+    encoding: 'utf8',
+  })
+
+  if (result.status !== 0) {
+    throw new Error('Version bump failed: ' + (result.stderr || result.stdout).trim())
+  }
+
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
+  if (!packageJson.version) {
+    throw new Error(`No version found in ${packageJsonPath}`)
+  }
+
+  return packageJson.version
+}
+
+function copyViaWebDav(sourcePath, name, version) {
+  const fileName = `${name} ${version}.apk`
+  const dirUrl = `${TAILDRIVE_BASE}/${encodeURIComponent(name)}/`
+  const fileUrl = `${TAILDRIVE_BASE}/${encodeURIComponent(name)}/${encodeURIComponent(fileName)}`
+  spawnSync('curl', ['-s', '-o', '/dev/null', '-X', 'MKCOL', '--connect-timeout', '5', dirUrl])
+  const result = spawnSync(
+    'curl',
+    ['-s', '-o', '/dev/null', '-w', '%{http_code}', '-T', sourcePath, '--connect-timeout', '5', '--max-time', '120', fileUrl],
+    { encoding: 'utf8' },
+  )
+  if (result.error || result.status !== 0) {
+    console.warn('[TailDrive] curl error:', result.error?.message ?? 'exit ' + result.status)
+    return false
+  }
+  const statusCode = parseInt(result.stdout, 10)
+  if (statusCode < 200 || statusCode >= 300) {
+    console.warn('[TailDrive] HTTP', statusCode)
+    return false
+  }
+  return true
+}
+
+function copyApk(version) {
+  if (!fs.existsSync(apkSource)) {
+    throw new Error(`APK source not found: ${apkSource}`)
+  }
+
+  const fileName = `${appName} ${version}.apk`
+  const sizeMb = (fs.statSync(apkSource).size / 1024 / 1024).toFixed(2)
+  let uploaded = false
+  if (process.platform !== 'win32') {
+    console.log('[TailDrive] Uploading APK...')
+    uploaded = copyViaWebDav(apkSource, appName, version)
+    if (uploaded) {
+      console.log(`Built APK (-> TailDrive): ${fileName} (${sizeMb} MB)`)
+      return
+    }
+    console.warn('[TailDrive] Upload failed, falling back to local Dropbox')
+  }
+
+  if (!dropboxDir) {
+    throw new Error('TailDrive upload failed and no local Dropbox found')
+  }
+
+  fs.mkdirSync(dropboxDir, { recursive: true })
+  const apkDest = path.join(dropboxDir, fileName)
+  fs.copyFileSync(apkSource, apkDest)
+  const copied = fs.statSync(apkDest)
+  console.log('Copied APK:')
+  console.log('  Copy: ' + apkDest)
+  console.log('  Size: ' + Math.round((copied.size / (1024 * 1024)) * 100) / 100 + ' MB')
 }
 
 const linuxInstallEnv = {
@@ -44,14 +140,13 @@ const linuxInstallEnv = {
   NODE_ENV: 'development',
 }
 
-// Bump patch version before each build so the APK filename is always unique
-run('npm', ['version', 'patch', '--no-git-tag-version'])
+const appVersion = bumpVersion()
 
-run('npm', ['install', '--no-package-lock'], { env: linuxInstallEnv })
-run('npm', ['install', '--no-save', '@esbuild/linux-x64', '@rollup/rollup-linux-x64-gnu'], { env: linuxInstallEnv })
+run('npm', ['install', '--no-package-lock', '--force'], { env: linuxInstallEnv })
+run('npm', ['install', '--no-save', '--force', '@esbuild/linux-x64', '@rollup/rollup-linux-x64-gnu'], { env: linuxInstallEnv })
 run('npm', ['rebuild', 'esbuild'])
 run('npx', ['vite', 'build'])
 run('node', ['node_modules/@capacitor/cli/bin/capacitor', 'sync', 'android'])
 run('chmod', ['+x', './gradlew'], { cwd: 'android' })
 run('./gradlew', ['assembleDebug'], { cwd: 'android' })
-run('node', ['scripts/copy-android-debug-apk.mjs'])
+copyApk(appVersion)
