@@ -5,7 +5,8 @@ import { spawnSync } from 'node:child_process'
 const projectDir = process.cwd()
 const packageJsonPath = path.join(projectDir, 'package.json')
 const TAILDRIVE_BASE = 'http://100.100.100.100:8080/atkins.email@gmail.com/zephyrusg16/dropboxapps'
-const appName = 'StremioAddonManager'
+const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
+const appName = packageJson.productName || 'StremioAddonManager'
 const apkSource = path.join(projectDir, 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk')
 const dropboxDir = resolveDropboxDir(appName)
 const javaHome = resolveJavaHome()
@@ -104,34 +105,23 @@ function copyViaWebDav(sourcePath, name, version) {
 }
 
 function copyApk(version) {
-  if (!fs.existsSync(apkSource)) {
-    throw new Error(`APK source not found: ${apkSource}`)
-  }
-
-  const fileName = `${appName} ${version}.apk`
+  const fileName = appName + ' ' + version + '.apk'
   const sizeMb = (fs.statSync(apkSource).size / 1024 / 1024).toFixed(2)
-  let uploaded = false
+
+  // Primary: always copy to project APKs/ folder
+  const apksDir = path.join(projectDir, 'APKs')
+  fs.mkdirSync(apksDir, { recursive: true })
+  const apksDest = path.join(apksDir, fileName)
+  fs.copyFileSync(apkSource, apksDest)
+  console.log('Built APK (-> APKs/): ' + fileName + ' (' + sizeMb + ' MB)')
+
+  // Optional: try TailDrive — skip silently if unavailable
   if (process.platform !== 'win32') {
     console.log('[TailDrive] Uploading APK...')
-    uploaded = copyViaWebDav(apkSource, appName, version)
-    if (uploaded) {
-      console.log(`Built APK (-> TailDrive): ${fileName} (${sizeMb} MB)`)
-      return
-    }
-    console.warn('[TailDrive] Upload failed, falling back to local Dropbox')
+    const uploaded = copyViaWebDav(apkSource, appName, version)
+    if (uploaded) console.log('[TailDrive] Upload successful.')
+    else console.warn('[TailDrive] Not available — APK saved to APKs/ folder.')
   }
-
-  if (!dropboxDir) {
-    throw new Error('TailDrive upload failed and no local Dropbox found')
-  }
-
-  fs.mkdirSync(dropboxDir, { recursive: true })
-  const apkDest = path.join(dropboxDir, fileName)
-  fs.copyFileSync(apkSource, apkDest)
-  const copied = fs.statSync(apkDest)
-  console.log('Copied APK:')
-  console.log('  Copy: ' + apkDest)
-  console.log('  Size: ' + Math.round((copied.size / (1024 * 1024)) * 100) / 100 + ' MB')
 }
 
 const linuxInstallEnv = {
@@ -140,9 +130,31 @@ const linuxInstallEnv = {
   NODE_ENV: 'development',
 }
 
+function needsInstall(dir) {
+  const nodeModules = path.join(dir, 'node_modules')
+  if (!fs.existsSync(nodeModules)) return true
+  const nmMtime = fs.statSync(nodeModules).mtimeMs
+  // Only check package-lock.json — package.json changes on every version bump
+  // but that doesn't require reinstalling deps
+  const lockFile = path.join(dir, 'package-lock.json')
+  if (!fs.existsSync(lockFile)) return true
+  return fs.statSync(lockFile).mtimeMs > nmMtime
+}
+
+function installDependencies(dir) {
+  if (!needsInstall(dir)) {
+    console.log('Dependencies up to date, skipping install in ' + path.basename(dir))
+    return
+  }
+  run('npm', ['install', '--include=dev', '--no-package-lock'], {
+    cwd: dir,
+    env: { NODE_ENV: 'development', npm_config_include: 'dev' }
+  })
+}
+
 const appVersion = bumpVersion()
 
-run('npm', ['install', '--no-package-lock', '--force'], { env: linuxInstallEnv })
+installDependencies(projectDir)
 run('npm', ['install', '--no-save', '--force', '@esbuild/linux-x64', '@rollup/rollup-linux-x64-gnu'], { env: linuxInstallEnv })
 run('npm', ['rebuild', 'esbuild'])
 run('npx', ['vite', 'build'])
