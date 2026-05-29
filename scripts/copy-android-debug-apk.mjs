@@ -3,7 +3,7 @@ import path from 'node:path'
 import os from 'node:os'
 import { spawnSync } from 'node:child_process'
 
-const TAILDRIVE_BASE = 'http://100.100.100.100:8080/atkins.email@gmail.com/zephyrusg16/dropboxapps'
+const TAILDRIVE_BASE = process.env.TAILDRIVE_BASE || ''
 const projectDir = process.cwd()
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectDir, 'package.json'), 'utf8'))
 const version = packageJson.version || '0.0.0'
@@ -18,10 +18,12 @@ if (!fs.existsSync(sourceApk)) {
 }
 
 if (process.platform !== 'win32') {
-  const uploaded = copyViaWebDav(sourceApk, appName, version)
-  if (uploaded) {
-    console.log(`Uploaded APK via TailDrive WebDAV: ${appName} ${version}.apk`)
-    process.exit(0)
+  if (TAILDRIVE_BASE) {
+    const uploaded = copyViaWebDav(sourceApk, appName, version)
+    if (uploaded) {
+      console.log(`Uploaded APK via TailDrive WebDAV: ${appName} ${version}.apk`)
+      process.exit(0)
+    }
   }
   console.log('TailDrive WebDAV unavailable, falling back to local path...')
 }

@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process'
 
 const projectDir = process.cwd()
 const packageJsonPath = path.join(projectDir, 'package.json')
-const TAILDRIVE_BASE = 'http://100.100.100.100:8080/atkins.email@gmail.com/zephyrusg16/dropboxapps'
+const TAILDRIVE_BASE = process.env.TAILDRIVE_BASE || ''
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
 const appName = packageJson.productName || 'StremioAddonManager'
 const apkSource = path.join(projectDir, 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk')
@@ -83,6 +83,10 @@ function bumpVersion() {
 }
 
 function copyViaWebDav(sourcePath, name, version) {
+  if (!TAILDRIVE_BASE) {
+    return false
+  }
+
   const fileName = `${name} ${version}.apk`
   const dirUrl = `${TAILDRIVE_BASE}/${encodeURIComponent(name)}/`
   const fileUrl = `${TAILDRIVE_BASE}/${encodeURIComponent(name)}/${encodeURIComponent(fileName)}`
