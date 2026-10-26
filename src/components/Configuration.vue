@@ -706,7 +706,7 @@ function handleDragEnd() {
 async function installAddon() {
     const manifestURL = await dialog.prompt({
         title: 'Add Addon to List',
-        htmlMessage: 'Enter the addon manifest URL:<br><br><small><strong>Note:</strong> This will add the addon to your list. You must click "Sync to Stremio" afterwards to install it to your account.</small>',
+        htmlMessage: 'Enter the addon manifest URL (https:// or stremio://):<br><br><small><strong>Note:</strong> This will add the addon to your list. You must click "Sync to Stremio" afterwards to install it to your account.</small>',
         placeholder: 'https://example.com/manifest.json',
         confirmText: 'Add to List',
         cancelText: 'Cancel',
@@ -714,7 +714,7 @@ async function installAddon() {
     
     if (!manifestURL) return; // User cancelled
     
-    const trimmedURL = manifestURL.trim();
+    const trimmedURL = manifestURL.trim().replace(/^stremio:\/\//i, 'https://');
     if (!trimmedURL) return;
     
     // Validate URL format
@@ -730,7 +730,7 @@ async function installAddon() {
     }
     
     // Check if addon already exists
-    const exists = addons.value.some(addon => addon.transportUrl === trimmedURL);
+    const exists = addons.value.some(addon => addon.transportUrl?.replace(/^stremio:\/\//i, 'https://') === trimmedURL);
     if (exists) {
         await dialog.alert({
             title: 'Addon Already in List',

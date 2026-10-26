@@ -101,7 +101,7 @@ Click "Load Addons" to pull in the current addons and catalogs for that account.
 
 **STEP 3: Edit / Re-order Addons & Catalogs**
 - Drag addons to change priority/order
-- Click "Add Addon..." to install new addons by entering their manifest URL
+- Click "Add Addon..." to install new addons by entering an HTTPS manifest URL or a `stremio://` installation link
 - Click "Find Catalog" to search for specific catalogs across all your addons
 - Reorder catalogs
 - Hide/show catalogs on the Home screen (including Cinemeta's catalogs)
