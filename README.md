@@ -131,3 +131,14 @@ Thanks also to `Sleeyax` and `<Code/>` for early conversations and code snippets
 - This tool is unofficial and not affiliated with Stremio.
 - No warranty or support is provided.
 - Use responsibly, especially if you're modifying someone else's Stremio profile.
+
+## Automatic APK delivery
+
+The Android build workflow keeps its project `APKs` output and automatically
+delivers APKs to the active Dropbox account's `Apps\Stremio Addon Manager`
+folder. Dropbox delivery is required; an unavailable destination or failed
+copy reports incomplete delivery. No separate copy request is needed.
+
+APK filenames use the readable app name and version, with a variant suffix
+where applicable. Keep this folder name stable when changing build scripts;
+do not recreate older slug or abbreviated folder names.

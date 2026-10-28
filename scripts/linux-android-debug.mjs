@@ -6,12 +6,24 @@ const projectDir = process.cwd()
 const packageJsonPath = path.join(projectDir, 'package.json')
 const TAILDRIVE_BASE = process.env.TAILDRIVE_BASE || ''
 const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'))
-const appName = packageJson.productName || 'StremioAddonManager'
+const appName = 'Stremio Addon Manager'
 const apkSource = path.join(projectDir, 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk')
 const dropboxDir = resolveDropboxDir(appName)
 const javaHome = resolveJavaHome()
 
 function resolveDropboxDir(appName) {
+  if (process.platform === 'win32') {
+    const infoPath = path.join(process.env.LOCALAPPDATA || '', 'Dropbox', 'info.json')
+    let apps = process.env.DROPBOX_APPS_DIR
+    if (!apps && fs.existsSync(infoPath)) {
+      const info = JSON.parse(fs.readFileSync(infoPath, 'utf8'))
+      const account = info.personal || info.business
+      if (account?.path) apps = path.join(account.path, 'Apps')
+    }
+    if (!apps) apps = path.join(process.env.USERPROFILE || '', 'Dropbox', 'Apps')
+    if (fs.existsSync(apps)) return path.join(apps, appName)
+  }
+
   const base = [
     '/mount/dropbox/Apps',
     '/mnt/c/Users/conta/Dropbox/Apps',
@@ -101,7 +113,7 @@ function copyViaWebDav(sourcePath, name, version) {
     return false
   }
   const statusCode = parseInt(result.stdout, 10)
-  if (statusCode < 200 || statusCode >= 300) {
+  if (!Number.isFinite(statusCode) || statusCode < 200 || statusCode >= 300) {
     console.warn('[TailDrive] HTTP', statusCode)
     return false
   }
@@ -119,12 +131,15 @@ function copyApk(version) {
   fs.copyFileSync(apkSource, apksDest)
   console.log('Built APK (-> APKs/): ' + fileName + ' (' + sizeMb + ' MB)')
 
-  // Optional: try TailDrive — skip silently if unavailable
-  if (process.platform !== 'win32') {
-    console.log('[TailDrive] Uploading APK...')
-    const uploaded = copyViaWebDav(apkSource, appName, version)
-    if (uploaded) console.log('[TailDrive] Upload successful.')
-    else console.warn('[TailDrive] Not available — APK saved to APKs/ folder.')
+  // Dropbox delivery is required in addition to the project APKs output.
+  if (dropboxDir) {
+    fs.mkdirSync(dropboxDir, { recursive: true })
+    fs.copyFileSync(apkSource, path.join(dropboxDir, fileName))
+    console.log('Built APK (-> Dropbox): ' + path.join(dropboxDir, fileName))
+  } else if (copyViaWebDav(apkSource, appName, version)) {
+    console.log('Built APK (-> Dropbox via Taildrive): ' + fileName)
+  } else {
+    throw new Error('Dropbox APK delivery failed; the build is not fully delivered')
   }
 }
 

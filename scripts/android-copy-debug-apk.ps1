@@ -3,9 +3,9 @@
 param(
   [string]$ProjectDir = (Split-Path $PSScriptRoot -Parent),
   [string]$SourceApk,
-  [string]$AppName = 'StremioAddonManager',
+  [string]$AppName = 'Stremio Addon Manager',
   [string]$Version,
-  [switch]$UseDropbox
+  [switch]$UseDropbox = $true
 )
 
 $ErrorActionPreference = 'Stop'
@@ -28,20 +28,32 @@ if ([string]::IsNullOrWhiteSpace($Version)) {
   $Version = [string]$packageJson.version
 }
 
-$dropboxBase = @(
-  'D:\Dropbox\Apps',
-  'C:\Users\conta\Dropbox\Apps',
-  'C:\Users\m_ack\Dropbox\Apps'
-) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
-
-if ([string]::IsNullOrWhiteSpace($dropboxBase)) {
-  throw 'No Dropbox Apps directory is available on this machine.'
+$dropboxBase = $env:DROPBOX_APPS_DIR
+if (-not $dropboxBase) {
+  $infoPath = Join-Path $env:LOCALAPPDATA 'Dropbox\info.json'
+  if (Test-Path -LiteralPath $infoPath) {
+    $info = Get-Content -LiteralPath $infoPath -Raw | ConvertFrom-Json
+    $account = if ($info.personal) { $info.personal } else { $info.business }
+    if ($account.path) { $dropboxBase = Join-Path $account.path 'Apps' }
+  } else {
+    $dropboxBase = @(
+      'D:\Dropbox\Apps',
+      'C:\Users\conta\Dropbox\Apps',
+      'C:\Users\m_ack\Dropbox\Apps'
+    ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+  }
+}
+if (-not $dropboxBase -or -not (Test-Path -LiteralPath $dropboxBase)) {
+  throw 'Dropbox Apps directory is unavailable; APK delivery is incomplete.'
 }
 
 $destDir = Join-Path $dropboxBase $AppName
 New-Item -ItemType Directory -Path $destDir -Force | Out-Null
 $targetPath = Join-Path $destDir "$AppName $Version.apk"
 Copy-Item -LiteralPath $SourceApk -Destination $targetPath -Force
+if ((Get-FileHash -LiteralPath $SourceApk).Hash -ne (Get-FileHash -LiteralPath $targetPath).Hash) {
+  throw 'Dropbox APK checksum verification failed.'
+}
 
 $apk = Get-Item -LiteralPath $targetPath
 Write-Host "Copied APK to $targetPath" -ForegroundColor Green

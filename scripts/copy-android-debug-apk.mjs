@@ -1,13 +1,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import os from 'node:os'
 import { spawnSync } from 'node:child_process'
 
 const TAILDRIVE_BASE = process.env.TAILDRIVE_BASE || ''
 const projectDir = process.cwd()
 const packageJson = JSON.parse(fs.readFileSync(path.join(projectDir, 'package.json'), 'utf8'))
 const version = packageJson.version || '0.0.0'
-const appName = 'StremioAddonManager'
+const appName = 'Stremio Addon Manager'
 const sourceApk =
   process.env.ANDROID_APK_SOURCE ||
   path.join(projectDir, 'android', 'app', 'build', 'outputs', 'apk', 'debug', 'app-debug.apk')
@@ -17,26 +16,21 @@ if (!fs.existsSync(sourceApk)) {
   process.exit(1)
 }
 
-if (process.platform !== 'win32') {
-  if (TAILDRIVE_BASE) {
-    const uploaded = copyViaWebDav(sourceApk, appName, version)
-    if (uploaded) {
-      console.log(`Uploaded APK via TailDrive WebDAV: ${appName} ${version}.apk`)
-      process.exit(0)
-    }
-  }
-  console.log('TailDrive WebDAV unavailable, falling back to local path...')
+const fileName = `${appName} ${version}.apk`
+const outputDir = process.env.ANDROID_APK_DEST_DIR || path.join(projectDir, 'APKs')
+fs.mkdirSync(outputDir, { recursive: true })
+fs.copyFileSync(sourceApk, path.join(outputDir, fileName))
+const apps = resolveDropboxApps()
+if (apps) {
+  const destination = path.join(apps, appName, fileName)
+  fs.mkdirSync(path.dirname(destination), { recursive: true })
+  fs.copyFileSync(sourceApk, destination)
+  console.log('Copied APK to Dropbox: ' + destination)
+} else if (TAILDRIVE_BASE && copyViaWebDav(sourceApk, appName, version)) {
+  console.log('Copied APK to Dropbox via Taildrive: ' + fileName)
+} else {
+  throw new Error('Dropbox APK delivery failed; the build is not fully delivered')
 }
-
-const destDir = process.env.ANDROID_APK_DEST_DIR || resolveDefaultDestDir(appName)
-fs.mkdirSync(destDir, { recursive: true })
-
-const destinationPath = path.join(destDir, `${appName} ${version}.apk`)
-fs.copyFileSync(sourceApk, destinationPath)
-
-const stats = fs.statSync(destinationPath)
-console.log(`Copied APK: ${destinationPath}`)
-console.log(`Size: ${(stats.size / (1024 * 1024)).toFixed(2)} MB`)
 
 function copyViaWebDav(sourcePath, name, buildVersion) {
   const fileName = `${name} ${buildVersion}.apk`
@@ -55,21 +49,19 @@ function copyViaWebDav(sourcePath, name, buildVersion) {
   return statusCode >= 200 && statusCode < 300
 }
 
-function resolveDefaultDestDir(name) {
-  for (const base of [
-    '/mount/dropbox/Apps',
-    '/mnt/c/Users/conta/Dropbox/Apps',
-    '/mnt/d/Dropbox/Apps',
-    '/mnt/c/Users/m_ack/Dropbox/Apps',
-  ]) {
-    if (!fs.existsSync(base)) {
-      continue
-    }
-
-    const destination = path.join(base, name)
-    fs.mkdirSync(destination, { recursive: true })
-    return destination
+function resolveDropboxApps() {
+  if (process.env.DROPBOX_APPS_DIR) {
+    if (!fs.existsSync(process.env.DROPBOX_APPS_DIR)) throw new Error('Configured Dropbox Apps directory is unavailable')
+    return process.env.DROPBOX_APPS_DIR
   }
-
-  return path.join(os.tmpdir(), name)
+  if (process.platform === 'win32') {
+    const infoPath = path.join(process.env.LOCALAPPDATA || '', 'Dropbox', 'info.json')
+    if (fs.existsSync(infoPath)) {
+      const info = JSON.parse(fs.readFileSync(infoPath, 'utf8'))
+      const account = info.personal || info.business
+      const apps = account?.path && path.join(account.path, 'Apps')
+      if (apps && fs.existsSync(apps)) return apps
+    }
+  }
+  return ['/mount/dropbox/Apps', '/mnt/d/Dropbox/Apps', '/mnt/c/Users/conta/Dropbox/Apps', '/mnt/c/Users/m_ack/Dropbox/Apps'].find(base => fs.existsSync(base)) || null
 }
